@@ -23,22 +23,34 @@
 <body>
 
 <iframe 
-  src="https://script.google.com/macros/s/AKfycbxYjeV_EKZzQiLUu4fRYPmnSeQcb7NIaqX72jyjHkrsENm-IR8gkLeRVyl0RHS2cVSY/exec" 
+  id="site-frame"
+  src="https://script.google.com/macros/s/AKfycbwQRPjOfyzM0xHTCBs7ouMBZQ1FydJHrIeO8OGeyBdjzFYXWSgJTvcuktRjMI9qyFP2/exec" 
   allow="clipboard-write" 
   style="width:100%; height:100vh; border:none;">
 </iframe>
 
   <script>
-    const REAL_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxYjeV_EKZzQiLUu4fRYPmnSeQcb7NIaqX72jyjHkrsENm-IR8gkLeRVyl0RHS2cVSY/exec";
-
+    const REAL_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwQRPjOfyzM0xHTCBs7ouMBZQ1FydJHrIeO8OGeyBdjzFYXWSgJTvcuktRjMI9qyFP2/exec";
     const iframe = document.getElementById("site-frame");
 
-    // Pass any link hash (e.g., #article-slug) straight into the Google Apps Script app
+    // Load initial hash into the iframe URL on initial page load
     iframe.src = REAL_APPS_SCRIPT_URL + window.location.hash;
 
-    // Listen for hash changes on indiemonday.pages.dev and sync with iframe
+    // Listen for hash changes on the main domain (e.g. user manually changes URL/hash) and forward to iframe
     window.addEventListener("hashchange", () => {
-      iframe.src = REAL_APPS_SCRIPT_URL + window.location.hash;
+      iframe.contentWindow.postMessage({
+        type: "HASH_CHANGE",
+        hash: window.location.hash
+      }, "*");
+    });
+
+    // Listen for hash update messages sent from inside the Apps Script iframe
+    window.addEventListener("message", (event) => {
+      if (event.data && event.data.type === "URL_HASH_UPDATE") {
+        if (window.location.hash !== event.data.hash) {
+          history.replaceState(null, "", event.data.hash);
+        }
+      }
     });
   </script>
 
