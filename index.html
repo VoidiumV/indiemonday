@@ -1023,8 +1023,6 @@
   <div id="view-home">
     <div class="home-wrap">
 
-      <div class="social-bar" id="social-bar"></div>
-
       <!-- Weekly Posts Tile -->
       <div class="feature-tile" id="tile-weekly-posts">
         <div class="eyebrow"><span class="sparkle" style="font-size:12px;color:#fff">✦</span><span class="label">Main Focus</span></div>
@@ -1062,6 +1060,8 @@
           <p class="nav-tile-desc">Who's behind Indie Monday.</p>
         </div>
       </div>
+
+      <div class="social-bar" id="social-bar" style="margin-top:28px"></div>
     </div>
   </div>
 
@@ -1217,26 +1217,59 @@
     var currentWeeklyId = null;
 
     // ---------- JSONP API CLIENT (avoids CORS issues talking to Apps Script) ----------
+    // Two reliability fixes here:
+    //  1) De-duping: if the same action+params is already in flight, reuse that
+    //     promise instead of firing a second identical request. Browsers cap
+    //     concurrent connections per host, so a slow request (e.g. a doc-heavy
+    //     interview load) can otherwise queue up duplicate calls behind it.
+    //  2) Timeout: a request can no longer hang forever. If Apps Script doesn't
+    //     respond within API_TIMEOUT_MS, the call fails so the UI can show an
+    //     error + retry instead of spinning indefinitely.
     var jsonpCounter = 0;
+    var API_TIMEOUT_MS = 20000;
+    var inFlightRequests = {};
+
     function api(action, params) {
-      return new Promise(function (resolve, reject) {
+      params = params || {};
+      var cacheKey = action + '::' + JSON.stringify(params);
+      if (inFlightRequests[cacheKey]) return inFlightRequests[cacheKey];
+
+      var promise = new Promise(function (resolve, reject) {
         var cbName = '_im_cb_' + (jsonpCounter++) + '_' + Date.now();
         var script = document.createElement('script');
-
-        window[cbName] = function (data) {
-          resolve(data);
-          cleanup();
-        };
+        var settled = false;
+        var timeoutId;
 
         function cleanup() {
           delete window[cbName];
           if (script.parentNode) script.parentNode.removeChild(script);
+          clearTimeout(timeoutId);
         }
+
+        window[cbName] = function (data) {
+          if (settled) return;
+          settled = true;
+          cleanup();
+          resolve(data);
+        };
+
+        script.onerror = function () {
+          if (settled) return;
+          settled = true;
+          cleanup();
+          reject(new Error('Network error contacting API for "' + action + '"'));
+        };
+
+        timeoutId = setTimeout(function () {
+          if (settled) return;
+          settled = true;
+          cleanup();
+          reject(new Error('That took too long to load'));
+        }, API_TIMEOUT_MS);
 
         var url = API_BASE_URL + (API_BASE_URL.indexOf('?') === -1 ? '?' : '&') +
           'action=' + encodeURIComponent(action) + '&callback=' + cbName;
 
-        params = params || {};
         for (var k in params) {
           if (params[k] !== undefined && params[k] !== null) {
             url += '&' + encodeURIComponent(k) + '=' + encodeURIComponent(params[k]);
@@ -1244,12 +1277,17 @@
         }
 
         script.src = url;
-        script.onerror = function () {
-          cleanup();
-          reject(new Error('Network error contacting API for "' + action + '"'));
-        };
         document.body.appendChild(script);
       });
+
+      inFlightRequests[cacheKey] = promise;
+      promise.then(function () {
+        delete inFlightRequests[cacheKey];
+      }, function () {
+        delete inFlightRequests[cacheKey];
+      });
+
+      return promise;
     }
 
     function getFallbackImage() {
@@ -1278,13 +1316,22 @@
       return { name: cleanName, hasAudio: hasAudio, isDouble: isDouble };
     }
 
-    // Embed formatting logic
+    // Embed formatting logic — all three (Spotify, Apple, YouTube) accept a plain
+    // share link pasted straight from the app; no need to hand-craft embed codes.
     function getSpotifyEmbedUrl(url) {
       if (!url) return null;
       var str = String(url).trim();
       if (str.indexOf('spotify.com/embed') !== -1) return str;
-      var match = str.match(/open\.spotify\.com\/(track|album|artist|playlist|episode|show)\/([a-zA-Z0-9]+)/);
+      // tolerate optional locale segments like /intl-en/ before the type/id
+      var match = str.match(/open\.spotify\.com\/(?:[a-zA-Z-]+\/)?(track|album|artist|playlist|episode|show)\/([a-zA-Z0-9]+)/);
       return match ? 'https://open.spotify.com/embed/' + match[1] + '/' + match[2] : str;
+    }
+
+    function getAppleMusicEmbedUrl(url) {
+      if (!url) return null;
+      var str = String(url).trim();
+      if (str.indexOf('embed.music.apple.com') !== -1) return str;
+      return str.replace(/music\.apple\.com/i, 'embed.music.apple.com');
     }
 
     function getYouTubeEmbedUrl(url) {
@@ -1338,15 +1385,9 @@
       tempInput.select();
 
       try {
-        var successful = document.execCommand('copy');
-        if (successful) {
-          alert('Link copied to clipboard!');
-        } else {
-          alert('Failed to copy link. URL: ' + shareUrl);
-        }
+        document.execCommand('copy');
       } catch (err) {
         console.error('Copy failed', err);
-        alert('URL: ' + shareUrl);
       }
 
       document.body.removeChild(tempInput);
@@ -1536,7 +1577,8 @@
         })
         .catch(function (err) {
           document.getElementById('weekly-posts-content').innerHTML =
-            '<div class="empty">Couldn\'t load weekly posts: ' + escapeHtml(err.message || err) + '</div>';
+            '<div class="empty">Couldn\'t load weekly posts: ' + escapeHtml(err.message || err) +
+            '<br><span style="cursor:pointer;text-decoration:underline;font-weight:800;" onclick="loadWeeklyPosts()">Tap to retry</span></div>';
         });
     }
 
@@ -1592,7 +1634,8 @@
         .then(renderWeeklyPost)
         .catch(function (err) {
           document.getElementById('weekly-post-content').innerHTML =
-            '<div class="empty">Couldn\'t load post: ' + escapeHtml(err.message || err) + '</div>';
+            '<div class="empty">Couldn\'t load post: ' + escapeHtml(err.message || err) +
+            '<br><span style="cursor:pointer;text-decoration:underline;font-weight:800;" onclick="loadWeeklyPost(currentWeeklyId)">Tap to retry</span></div>';
         });
     }
 
@@ -1684,7 +1727,8 @@
         })
         .catch(function (err) {
           document.getElementById('team-content').innerHTML =
-            '<div class="empty">Couldn\'t load team info: ' + escapeHtml(err.message || err) + '</div>';
+            '<div class="empty">Couldn\'t load team info: ' + escapeHtml(err.message || err) +
+            '<br><span style="cursor:pointer;text-decoration:underline;font-weight:800;" onclick="loadTeam()">Tap to retry</span></div>';
         });
     }
 
@@ -1725,7 +1769,8 @@
         })
         .catch(function (err) {
           document.getElementById('songs-content').innerHTML =
-            '<div class="empty">Couldn\'t load songs: ' + escapeHtml(err.message || err) + '</div>';
+            '<div class="empty">Couldn\'t load songs: ' + escapeHtml(err.message || err) +
+            '<br><span style="cursor:pointer;text-decoration:underline;font-weight:800;" onclick="loadSongs()">Tap to retry</span></div>';
         });
     }
 
@@ -1769,7 +1814,8 @@
         })
         .catch(function (err) {
           document.getElementById('albums-content').innerHTML =
-            '<div class="empty">Couldn\'t load albums: ' + escapeHtml(err.message || err) + '</div>';
+            '<div class="empty">Couldn\'t load albums: ' + escapeHtml(err.message || err) +
+            '<br><span style="cursor:pointer;text-decoration:underline;font-weight:800;" onclick="loadAlbums()">Tap to retry</span></div>';
         });
     }
 
@@ -1813,7 +1859,8 @@
         })
         .catch(function (err) {
           document.getElementById('artists-content').innerHTML =
-            '<div class="empty">Couldn\'t load artists: ' + escapeHtml(err.message || err) + '</div>';
+            '<div class="empty">Couldn\'t load artists: ' + escapeHtml(err.message || err) +
+            '<br><span style="cursor:pointer;text-decoration:underline;font-weight:800;" onclick="loadArtists()">Tap to retry</span></div>';
         });
     }
 
@@ -1858,7 +1905,8 @@
         })
         .catch(function (err) {
           document.getElementById('feed').innerHTML =
-            '<div class="empty">Couldn\'t load interviews: ' + escapeHtml(err.message || err) + '</div>';
+            '<div class="empty">Couldn\'t load interviews: ' + escapeHtml(err.message || err) +
+            '<br><span style="cursor:pointer;text-decoration:underline;font-weight:800;" onclick="loadList()">Tap to retry</span></div>';
         });
     }
 
@@ -2013,7 +2061,8 @@
         .then(renderPost)
         .catch(function (err) {
           document.getElementById('content').innerHTML =
-            '<div class="empty">Couldn\'t load interview: ' + escapeHtml(err.message || err) + '</div>';
+            '<div class="empty">Couldn\'t load interview: ' + escapeHtml(err.message || err) +
+            '<br><span style="cursor:pointer;text-decoration:underline;font-weight:800;" onclick="loadPost(currentInterviewId)">Tap to retry</span></div>';
         });
     }
 
@@ -2143,7 +2192,8 @@
         var spEmbed = getSpotifyEmbedUrl(url) || url;
         iframeHtml = '<iframe src="' + escapeHtml(spEmbed) + '" height="152" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>';
       } else if (kind === 'apple') {
-        iframeHtml = '<iframe src="' + escapeHtml(url) + '" height="175" allow="autoplay *; encrypted-media *;" sandbox="allow-forms allow-popups allow-same-origin allow-scripts allow-storage-access-by-user-activation allow-top-navigation-by-user-activation"></iframe>';
+        var amEmbed = getAppleMusicEmbedUrl(url) || url;
+        iframeHtml = '<iframe src="' + escapeHtml(amEmbed) + '" height="175" allow="autoplay *; encrypted-media *;" sandbox="allow-forms allow-popups allow-same-origin allow-scripts allow-storage-access-by-user-activation allow-top-navigation-by-user-activation"></iframe>';
       }
 
       body.innerHTML = iframeHtml;
