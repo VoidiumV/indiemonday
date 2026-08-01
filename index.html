@@ -11,6 +11,31 @@
   </style>
 </head>
 <body>
-  <iframe src="https://script.google.com/macros/s/AKfycbw4u-8y32e9MKWjWC6Cu1Gym1TNqfn1IEgzHvfiyT14K5IU4nVSB8aG-rOVPR9KxqY4/exec"></iframe>
+  <iframe id="app-iframe" src="https://script.google.com/macros/s/AKfycbwXD2CxbOwXbkhc180KLuG0UanS0Mr1iAXxaoa7HARNb25GOULJPDeTkYGnlSNRNXW1/exec"></iframe>
+
+  <script>
+    var iframe = document.getElementById('app-iframe');
+
+    // 1. Send current parent location hash to iframe once iframe finishes loading
+    iframe.addEventListener('load', function() {
+      if (window.location.hash) {
+        iframe.contentWindow.postMessage({ type: 'HASH_CHANGE', hash: window.location.hash }, '*');
+      }
+    });
+
+    // 2. Listen for URL hash changes from child iframe and update parent address bar
+    window.addEventListener('message', function(event) {
+      if (event.data && event.data.type === 'URL_HASH_UPDATE') {
+        if (window.location.hash !== event.data.hash) {
+          history.replaceState(null, '', event.data.hash || '#');
+        }
+      }
+    });
+
+    // 3. Listen for parent hash changes (browser back/forward or manual edits) and send to iframe
+    window.addEventListener('hashchange', function() {
+      iframe.contentWindow.postMessage({ type: 'HASH_CHANGE', hash: window.location.hash }, '*');
+    });
+  </script>
 </body>
 </html>
