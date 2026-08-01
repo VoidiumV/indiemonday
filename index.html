@@ -5,77 +5,38 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Indie Monday</title>
   <style>
-    * {
+    html, body {
       margin: 0;
       padding: 0;
-      box-sizing: border-box;
-    }
-    html, body {
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background-color: #0d0f12; /* Matches dark background to prevent flash */
+      background: #0d0f12;
     }
     iframe {
       width: 100%;
       height: 100%;
       border: none;
-      display: block;
     }
   </style>
 </head>
 <body>
 
-  <iframe id="app-frame" src="" allowfullscreen></iframe>
+  <iframe id="site-frame" src="" allowfullscreen></iframe>
 
   <script>
-    // YOUR GOOGLE APPS SCRIPT EXEC URL
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwZyzKQO3ktNDj7qPd2F30sIqhKLboyTTIT362X2tYfPPx1zSVpbu-LoZGH3KF-HwuJ/exec"; 
+    const REAL_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzXJB86BHwcj9dwcsTutQMcnWK0Ire5bYtXv4DRGvnR6m7-x0Zy0nlUO77C2hO1SZx0/exec";
 
-    const iframe = document.getElementById("app-frame");
+    const iframe = document.getElementById("site-frame");
 
-    // 1. Build initial iframe source carrying the current hash (e.g. #article-slug)
-    function loadFrame() {
-      const currentHash = window.location.hash;
-      iframe.src = APPS_SCRIPT_URL + currentHash;
-    }
+    // Pass any link hash (e.g., #article-slug) straight into the Google Apps Script app
+    iframe.src = REAL_APPS_SCRIPT_URL + window.location.hash;
 
-    // 2. Pass hash updates down to the iframe if the user navigates directly on indiemonday.pages.dev
+    // Listen for hash changes on indiemonday.pages.dev and sync with iframe
     window.addEventListener("hashchange", () => {
-      if (iframe.contentWindow) {
-        iframe.contentWindow.location.hash = window.location.hash;
-      }
+      iframe.src = REAL_APPS_SCRIPT_URL + window.location.hash;
     });
-
-    // 3. Listen for postMessage events from Apps Script to sync hash and copy clean links
-    window.addEventListener("message", (event) => {
-      if (!event.data || typeof event.data !== "object") return;
-
-      // Update parent URL hash when iframe navigates to an article/tab
-      if (event.data.type === "UPDATE_HASH") {
-        history.replaceState(null, null, "#" + event.data.hash);
-      }
-
-      // Handle copy link requests triggered inside the Apps Script app
-      if (event.data.type === "COPY_LINK") {
-        const cleanUrl = "https://indiemonday.pages.dev/#" + event.data.hash;
-        navigator.clipboard.writeText(cleanUrl).then(() => {
-          alert("Link copied: " + cleanUrl);
-        }).catch(() => {
-          // Fallback copy method
-          const input = document.createElement("input");
-          input.value = cleanUrl;
-          document.body.appendChild(input);
-          input.select();
-          document.execCommand("copy");
-          document.body.removeChild(input);
-          alert("Link copied: " + cleanUrl);
-        });
-      }
-    });
-
-    // Initial load
-    loadFrame();
   </script>
+
 </body>
 </html>
