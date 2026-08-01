@@ -5,234 +5,77 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Indie Monday</title>
   <style>
-    :root {
-      --bg-color: #0d0f12;
-      --card-bg: #161a22;
-      --text-color: #f0f6fc;
-      --accent-color: #58a6ff;
-      --border-color: #30363d;
-    }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background-color: var(--bg-color);
-      color: var(--text-color);
+    * {
       margin: 0;
-      padding: 20px;
+      padding: 0;
+      box-sizing: border-box;
     }
-
-    .container {
-      max-width: 800px;
-      margin: 0 auto;
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #0d0f12; /* Matches dark background to prevent flash */
     }
-
-    header {
-      text-align: center;
-      margin-bottom: 2rem;
-    }
-
-    .card {
-      background: var(--card-bg);
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
-      padding: 20px;
-      margin-bottom: 1rem;
-      transition: border-color 0.2s;
-    }
-
-    .card.active {
-      border-color: var(--accent-color);
-    }
-
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .share-btn {
-      background: transparent;
-      border: 1px solid var(--border-color);
-      color: var(--accent-color);
-      padding: 6px 12px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 0.85rem;
-    }
-
-    .share-btn:hover {
-      background: rgba(88, 166, 255, 0.1);
-    }
-
-    /* Toast Notification for Copying */
-    #toast {
-      visibility: hidden;
-      min-width: 200px;
-      background-color: #238636;
-      color: #fff;
-      text-align: center;
-      border-radius: 6px;
-      padding: 12px;
-      position: fixed;
-      z-index: 1000;
-      bottom: 30px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 0.9rem;
-    }
-
-    #toast.show {
-      visibility: visible;
-      animation: fadein 0.3s, fadeout 0.5s 2.5s;
-    }
-
-    @keyframes fadein {
-      from { bottom: 0; opacity: 0; }
-      to { bottom: 30px; opacity: 1; }
-    }
-
-    @keyframes fadeout {
-      from { bottom: 30px; opacity: 1; }
-      to { bottom: 0; opacity: 0; }
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
     }
   </style>
 </head>
 <body>
 
-  <div class="container">
-    <header>
-      <h1>Indie Monday</h1>
-      <p>Weekly Features & Artist Spotlight</p>
-    </header>
-
-    <main id="content-list">
-      <!-- Dynamic content rendered here -->
-    </main>
-  </div>
-
-  <div id="toast">Link copied to clipboard!</div>
+  <iframe id="app-frame" src="" allowfullscreen></iframe>
 
   <script>
-    // Configuration: Use site domain explicitly as fallback
-    const DOMAIN = "https://indiemonday.pages.dev";
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwXD2CxbOwXbkhc180KLuG0UanS0Mr1iAXxaoa7HARNb25GOULJPDeTkYGnlSNRNXW1/exec"; // Your GAS Web App API endpoint
+    // YOUR GOOGLE APPS SCRIPT EXEC URL
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwZyzKQO3ktNDj7qPd2F30sIqhKLboyTTIT362X2tYfPPx1zSVpbu-LoZGH3KF-HwuJ/exec"; 
 
-    // Get canonical base URL ensuring it never uses script.google.com
-    function getBaseUrl() {
-      if (window.location.hostname.includes("pages.dev") || window.location.hostname.includes("localhost")) {
-        return window.location.origin + window.location.pathname;
+    const iframe = document.getElementById("app-frame");
+
+    // 1. Build initial iframe source carrying the current hash (e.g. #article-slug)
+    function loadFrame() {
+      const currentHash = window.location.hash;
+      iframe.src = APPS_SCRIPT_URL + currentHash;
+    }
+
+    // 2. Pass hash updates down to the iframe if the user navigates directly on indiemonday.pages.dev
+    window.addEventListener("hashchange", () => {
+      if (iframe.contentWindow) {
+        iframe.contentWindow.location.hash = window.location.hash;
       }
-      return DOMAIN + "/";
-    }
+    });
 
-    // Generate clean shareable link with slug/id hash
-    function getShareableUrl(itemSlug) {
-      const baseUrl = getBaseUrl().replace(/\/$/, ""); // Strip trailing slash
-      return `${baseUrl}/#${encodeURIComponent(itemSlug)}`;
-    }
+    // 3. Listen for postMessage events from Apps Script to sync hash and copy clean links
+    window.addEventListener("message", (event) => {
+      if (!event.data || typeof event.data !== "object") return;
 
-    // Copy link handler
-    async function copyShareLink(itemSlug, event) {
-      if (event) event.stopPropagation();
-      const shareUrl = getShareableUrl(itemSlug);
-
-      try {
-        await navigator.clipboard.writeText(shareUrl);
-        showToast("Link copied to clipboard!");
-      } catch (err) {
-        // Fallback for older browsers
-        const textarea = document.createElement("textarea");
-        textarea.value = shareUrl;
-        document.body.appendChild(textarea);
-        textarea.select();
-        document.execCommand("copy");
-        document.body.removeChild(textarea);
-        showToast("Link copied to clipboard!");
+      // Update parent URL hash when iframe navigates to an article/tab
+      if (event.data.type === "UPDATE_HASH") {
+        history.replaceState(null, null, "#" + event.data.hash);
       }
-    }
 
-    function showToast(message) {
-      const toast = document.getElementById("toast");
-      toast.innerText = message;
-      toast.className = "show";
-      setTimeout(() => {
-        toast.className = toast.className.replace("show", "");
-      }, 3000);
-    }
-
-    // Load and render backend data from Google Apps Script
-    async function fetchData() {
-      try {
-        const response = await fetch(APPS_SCRIPT_URL);
-        const data = await response.json();
-        renderList(data);
-        handleDeepLink(); // Route to deep link after content loads
-      } catch (error) {
-        console.error("Error loading content:", error);
-      }
-    }
-
-    function renderList(items) {
-      const container = document.getElementById("content-list");
-      container.innerHTML = "";
-
-      items.forEach(item => {
-        // Create slug if not provided (e.g., "artist-name")
-        const slug = item.slug || item.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-
-        const card = document.createElement("article");
-        card.className = "card";
-        card.id = `item-${slug}`;
-        card.setAttribute("data-slug", slug);
-
-        card.innerHTML = `
-          <div class="card-header">
-            <h2>${item.title}</h2>
-            <button class="share-btn" onclick="copyShareLink('${slug}', event)">Copy Link</button>
-          </div>
-          <p>${item.description || ''}</p>
-        `;
-
-        card.addEventListener("click", () => {
-          setPageHash(slug);
+      // Handle copy link requests triggered inside the Apps Script app
+      if (event.data.type === "COPY_LINK") {
+        const cleanUrl = "https://indiemonday.pages.dev/#" + event.data.hash;
+        navigator.clipboard.writeText(cleanUrl).then(() => {
+          alert("Link copied: " + cleanUrl);
+        }).catch(() => {
+          // Fallback copy method
+          const input = document.createElement("input");
+          input.value = cleanUrl;
+          document.body.appendChild(input);
+          input.select();
+          document.execCommand("copy");
+          document.body.removeChild(input);
+          alert("Link copied: " + cleanUrl);
         });
-
-        container.appendChild(card);
-      });
-    }
-
-    // Update URL hash without triggering full reload
-    function setPageHash(slug) {
-      if (window.location.hash !== `#${slug}`) {
-        history.pushState(null, null, `#${slug}`);
-        highlightItem(slug);
       }
-    }
+    });
 
-    // Read current hash and scroll/highlight relevant item
-    function handleDeepLink() {
-      const rawHash = window.location.hash.replace("#", "");
-      if (!rawHash) return;
-
-      const targetSlug = decodeURIComponent(rawHash);
-      highlightItem(targetSlug);
-    }
-
-    function highlightItem(slug) {
-      document.querySelectorAll(".card").forEach(el => el.classList.remove("active"));
-      
-      const targetElement = document.querySelector(`[data-slug="${slug}"]`);
-      if (targetElement) {
-        targetElement.classList.add("active");
-        targetElement.scrollIntoView({ behavior: "smooth", block: "center" });
-      }
-    }
-
-    // Listen for back/forward navigation or manual URL changes
-    window.addEventListener("hashchange", handleDeepLink);
-
-    // Initial load call
-    document.addEventListener("DOMContentLoaded", fetchData);
+    // Initial load
+    loadFrame();
   </script>
 </body>
 </html>
