@@ -2,6 +2,21 @@
 <html>
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>
+    // Runs before CSS paints so the saved theme applies immediately —
+    // no flash of the wrong theme on load. Persists across visits via
+    // localStorage (this is a real deployed site, not a Claude artifact,
+    // so localStorage is fine here).
+    (function () {
+      try {
+        var saved = localStorage.getItem('im_theme');
+        if (saved === 'dark') {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      } catch (e) { /* localStorage unavailable — just default to light */ }
+    })();
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Manrope:wght@500;700;800&display=swap" rel="stylesheet">
@@ -20,6 +35,28 @@
       /* dots */
       --dot-on-dark: #ffffff;
       --dot-on-light: #000000;
+      --dot-pattern: rgba(13,13,13,0.08);
+      /* body copy inside articles */
+      --content-text: #2a2523;
+      /* default idle background for pill/stream buttons */
+      --btn-bg: #ffffff;
+      /* always-dark brand surfaces (topbar, feature tile, form plaque) — stay
+         the same in both themes so the brand accent doesn't disappear */
+      --brand-dark: #0d0d0d;
+    }
+
+    [data-theme="dark"] {
+      --sky: #121212;
+      --sky-soft: #121212;
+      --sky-deep: #f0f0f0;
+      --ink: #f0f0f0;
+      --ink-soft: rgba(240,240,240,0.65);
+      --paper: #1b1b1b;
+      --paper-soft: #f0f0f0;
+      --dot-on-light: #f0f0f0;
+      --dot-pattern: rgba(255,255,255,0.07);
+      --content-text: #d8d3cb;
+      --btn-bg: #1b1b1b;
     }
 
     * { box-sizing: border-box; }
@@ -28,11 +65,12 @@
       margin: 0;
       padding: 0;
       background-color: var(--sky);
-      background-image: radial-gradient(rgba(13,13,13,0.08) 1.5px, transparent 1.5px);
+      background-image: radial-gradient(var(--dot-pattern) 1.5px, transparent 1.5px);
       background-size: 16px 16px;
       color: var(--ink);
       font-family: 'Manrope', 'Helvetica Neue', Arial, sans-serif;
       -webkit-font-smoothing: antialiased;
+      transition: background-color 0.15s ease, color 0.15s ease;
     }
 
     .display {
@@ -88,9 +126,9 @@
       position: sticky;
       top: 0;
       z-index: 100;
-      background: var(--ink);
+      background: var(--brand-dark);
       padding: 26px 24px 22px;
-      border-bottom: 3px solid var(--ink);
+      border-bottom: 3px solid var(--brand-dark);
     }
 
     .topbar-inner {
@@ -136,6 +174,52 @@
 
     .topbar .dotgrid { color: var(--dot-on-dark); }
 
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .changelog-btn {
+      display: inline-flex;
+      align-items: center;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #fff;
+      background: transparent;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-radius: 999px;
+      padding: 7px 14px;
+      cursor: pointer;
+      user-select: none;
+      opacity: 0.85;
+      transition: opacity 0.12s ease, border-color 0.12s ease;
+      white-space: nowrap;
+    }
+    .changelog-btn:hover { opacity: 1; border-color: #fff; }
+
+    .theme-toggle-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: transparent;
+      border: 2px solid rgba(255,255,255,0.4);
+      color: #fff;
+      cursor: pointer;
+      user-select: none;
+      font-size: 15px;
+      line-height: 1;
+      opacity: 0.85;
+      transition: opacity 0.12s ease, border-color 0.12s ease;
+      flex-shrink: 0;
+    }
+    .theme-toggle-btn:hover { opacity: 1; border-color: #fff; }
+
     /* ---------- home view ---------- */
     .home-wrap {
       max-width: 680px;
@@ -144,9 +228,9 @@
     }
 
     .feature-tile {
-      background: var(--ink);
+      background: var(--brand-dark);
       color: #fff;
-      border: 3px solid var(--ink);
+      border: 3px solid var(--brand-dark);
       padding: 30px 30px 26px;
       margin-bottom: 20px;
       box-shadow: 6px 6px 0 rgba(13,13,13,0.18);
@@ -213,6 +297,64 @@
 
     .page-header { margin-bottom: 30px; }
 
+    .search-box-wrap { margin: 18px 0 0; }
+    .search-box {
+      width: 100%;
+      font-family: 'Manrope', 'Helvetica Neue', Arial, sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--ink);
+      background: var(--btn-bg);
+      border: 2px solid var(--ink);
+      border-radius: 8px;
+      padding: 11px 14px;
+      box-shadow: 3px 3px 0 var(--ink);
+      outline: none;
+    }
+    .search-box::placeholder { color: var(--ink-soft); font-weight: 600; }
+    .search-box:focus { box-shadow: 4px 4px 0 var(--ink); }
+
+    .archive-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+      gap: 12px;
+    }
+    .archive-chip {
+      background: var(--paper);
+      border: 3px solid var(--ink);
+      box-shadow: 3px 3px 0 rgba(13,13,13,0.18);
+      padding: 14px 8px;
+      text-align: center;
+      cursor: pointer;
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+    }
+    .archive-chip:hover {
+      transform: translate(-2px, -2px);
+      box-shadow: 5px 5px 0 rgba(13,13,13,0.24);
+    }
+    .archive-chip.locked {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+    .archive-chip.locked:hover {
+      transform: none;
+      box-shadow: 3px 3px 0 rgba(13,13,13,0.18);
+    }
+    .archive-chip .archive-num {
+      font-family: 'Anton', 'Helvetica Neue', Arial, sans-serif;
+      font-size: 19px;
+      line-height: 1;
+    }
+    .archive-chip .archive-sub {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: var(--ink-soft);
+      margin-top: 6px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
     .back-row {
       max-width: 740px;
       margin: 0 auto;
@@ -244,7 +386,7 @@
       text-transform: uppercase;
       padding: 6px 12px;
       border: 2px solid var(--ink);
-      background: #fff;
+      background: var(--btn-bg);
       color: var(--ink);
       cursor: pointer;
       box-shadow: 2px 2px 0 var(--ink);
@@ -473,7 +615,7 @@
       text-decoration: none;
       padding: 6px 12px;
       border: 2px solid var(--ink);
-      background: #fff;
+      background: var(--btn-bg);
       color: var(--ink);
       box-shadow: 2px 2px 0 var(--ink);
       transition: transform 0.1s ease, box-shadow 0.1s ease;
@@ -571,7 +713,7 @@
     .content p {
       font-size: 15.5px;
       line-height: 1.65;
-      color: #2a2523;
+      color: var(--content-text);
       margin: 0 0 18px;
     }
 
@@ -598,7 +740,7 @@
       padding-left: 22px;
       font-size: 15.5px;
       line-height: 1.65;
-      color: #2a2523;
+      color: var(--content-text);
     }
 
     .content li { margin-bottom: 6px; }
@@ -683,7 +825,7 @@
       text-decoration: none;
       padding: 10px 14px;
       border: 2px solid var(--ink);
-      background: #fff;
+      background: var(--btn-bg);
       color: var(--ink);
       box-shadow: 3px 3px 0 var(--ink);
       transition: transform 0.1s ease, box-shadow 0.1s ease;
@@ -771,8 +913,8 @@
     .form-plaque {
       width: 220px;
       margin: 0 26px;
-      background: var(--ink);
-      border: 3px solid var(--ink);
+      background: var(--brand-dark);
+      border: 3px solid var(--brand-dark);
       padding: 26px 22px;
       box-shadow: 6px 6px 0 rgba(13,13,13,0.18);
       cursor: pointer;
@@ -919,7 +1061,7 @@
       padding: 10px 16px;
       border: 2px solid var(--ink);
       cursor: pointer;
-      background: #fff;
+      background: var(--btn-bg);
       color: var(--ink);
       box-shadow: 3px 3px 0 var(--ink);
       transition: transform 0.1s ease, box-shadow 0.1s ease;
@@ -999,6 +1141,32 @@
       .feature-card { flex-direction: column; text-align: center; }
       .feature-card-art { width: 100%; height: 220px; border-right: none; border-bottom: 3px solid var(--ink); }
       .stream-links { justify-content: center; }
+
+      /* ---- tap-target fixes: small text links were too small to tap reliably,
+         big tiles felt oversized for a thumb — this rebalances both ---- */
+      .crumb-back, .back-link {
+        display: inline-block;
+        padding: 10px 2px;
+        margin: -10px -2px;
+      }
+      .copy-link-btn {
+        padding: 10px 16px;
+        min-height: 40px;
+      }
+      .stream-btn, .listen-btn {
+        padding: 10px 14px;
+      }
+      .social-icon-link {
+        width: 46px;
+        height: 46px;
+      }
+      .floating-player-close {
+        padding: 6px 10px;
+        font-size: 24px;
+      }
+      .feature-tile { padding: 22px 22px 20px; }
+      .nav-tile { padding: 16px 16px 14px; }
+      .changelog-btn { padding: 8px 14px; }
     }
   </style>
 </head>
@@ -1012,9 +1180,13 @@
         <h1 class="display"><span class="sparkle">✦</span>Indie Monday</h1>
         <span id="topbar-subtitle">Highlighting Independent Artists</span>
       </div>
-      <div class="dotgrid">
-        <div></div><div></div><div></div><div></div>
-        <div></div><div></div><div></div><div></div>
+      <div class="topbar-right">
+        <span class="changelog-btn" id="changelog-btn">Changelog</span>
+        <span class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode">🌙</span>
+        <div class="dotgrid">
+          <div></div><div></div><div></div><div></div>
+          <div></div><div></div><div></div><div></div>
+        </div>
       </div>
     </div>
   </div>
@@ -1055,6 +1227,11 @@
           <p class="nav-tile-desc">An artist who deserves more recognition each week.</p>
         </div>
 
+        <div class="nav-tile clickable" id="tile-archive">
+          <p class="display nav-tile-title">Archive</p>
+          <p class="nav-tile-desc">Browse every issue by number.</p>
+        </div>
+
         <div class="nav-tile span-2 clickable" id="tile-our-team">
           <p class="display nav-tile-title">Our Team</p>
           <p class="nav-tile-desc">Who's behind Indie Monday.</p>
@@ -1062,6 +1239,9 @@
       </div>
 
       <div class="social-bar" id="social-bar" style="margin-top:28px"></div>
+      <div style="text-align:center; margin-top:6px;">
+        <a href="#" id="rss-link" target="_blank" rel="noopener" style="font-size:12px; font-weight:800; color:var(--ink-soft); text-decoration:underline; text-underline-offset:2px;">Subscribe via RSS</a>
+      </div>
     </div>
   </div>
 
@@ -1074,6 +1254,9 @@
       <div class="page-header">
         <h1 class="display" style="font-size:38px; margin:0 0 6px;">Weekly Posts</h1>
         <p style="color:var(--ink-soft); font-weight:600; margin:0;">Our weekly roundups and highlights.</p>
+        <div class="search-box-wrap">
+          <input type="text" class="search-box" id="weekly-search" placeholder="Search by artist, author, or issue number&hellip;">
+        </div>
       </div>
       <div id="weekly-posts-content">
         <div class="loading">Loading weekly posts&hellip;</div>
@@ -1112,6 +1295,22 @@
     </div>
   </div>
 
+  <!-- ARCHIVE VIEW -->
+  <div id="view-archive" style="display:none">
+    <div class="page-wrap">
+      <div class="back-row" style="padding-left:0; margin-bottom: 20px;">
+        <span class="back-link" onclick="showHomeView()">&larr; Back to Home</span>
+      </div>
+      <div class="page-header">
+        <h1 class="display" style="font-size:38px; margin:0 0 6px;">Archive</h1>
+        <p style="color:var(--ink-soft); font-weight:600; margin:0;">Jump straight to any issue.</p>
+      </div>
+      <div id="archive-content">
+        <div class="loading">Loading archive&hellip;</div>
+      </div>
+    </div>
+  </div>
+
   <!-- SONGS VIEW -->
   <div id="view-songs" style="display:none">
     <div class="page-wrap">
@@ -1121,6 +1320,9 @@
       <div class="page-header">
         <h1 class="display" style="font-size:38px; margin:0 0 6px;">Song of the Week</h1>
         <p style="color:var(--ink-soft); font-weight:600; margin:0;">Discover our featured tracks each week.</p>
+        <div class="search-box-wrap">
+          <input type="text" class="search-box" id="songs-search" placeholder="Search by song or artist&hellip;">
+        </div>
       </div>
       <div id="songs-content">
         <div class="loading">Loading songs&hellip;</div>
@@ -1137,6 +1339,9 @@
       <div class="page-header">
         <h1 class="display" style="font-size:38px; margin:0 0 6px;">Album of the Week</h1>
         <p style="color:var(--ink-soft); font-weight:600; margin:0;">Explore outstanding albums featured on Indie Monday.</p>
+        <div class="search-box-wrap">
+          <input type="text" class="search-box" id="albums-search" placeholder="Search by album or artist&hellip;">
+        </div>
       </div>
       <div id="albums-content">
         <div class="loading">Loading albums&hellip;</div>
@@ -1153,9 +1358,28 @@
       <div class="page-header">
         <h1 class="display" style="font-size:38px; margin:0 0 6px;">Artist of the Week</h1>
         <p style="color:var(--ink-soft); font-weight:600; margin:0;">Spotlighting incredible independent artists.</p>
+        <div class="search-box-wrap">
+          <input type="text" class="search-box" id="artists-search" placeholder="Search by artist&hellip;">
+        </div>
       </div>
       <div id="artists-content">
         <div class="loading">Loading artists&hellip;</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHANGELOG VIEW -->
+  <div id="view-changelog" style="display:none">
+    <div class="page-wrap">
+      <div class="back-row" style="padding-left:0; margin-bottom: 20px;">
+        <span class="back-link" onclick="showHomeView()">&larr; Back to Home</span>
+      </div>
+      <div class="page-header">
+        <h1 class="display" style="font-size:38px; margin:0 0 6px;">Changelog</h1>
+        <p style="color:var(--ink-soft); font-weight:600; margin:0;">What's new on Indie Monday.</p>
+      </div>
+      <div class="content" id="changelog-content" style="margin:0; padding:0;">
+        <div class="loading">Loading changelog&hellip;</div>
       </div>
     </div>
   </div>
@@ -1166,6 +1390,9 @@
 
     <div class="main-col">
       <div id="view-list" style="display:none">
+        <div class="search-box-wrap" style="max-width:680px; margin:26px auto 0; padding:0 20px;">
+          <input type="text" class="search-box" id="interviews-search" placeholder="Search by artist or interviewer&hellip;">
+        </div>
         <div class="feed" id="feed">
           <div class="loading">Loading interviews&hellip;</div>
         </div>
@@ -1200,7 +1427,7 @@
     // ================================================================
     // CONFIG — point this at your deployed Apps Script Web App /exec URL
     // ================================================================
-    var API_BASE_URL = 'https://script.google.com/macros/s/AKfycbzz6UxaEySvvMHTrXyxMVtFHP760qClg4oBgU4pnoC-eVIegbzySXhgZZlKvHxmGDU0/exec';
+    var API_BASE_URL = 'https://script.google.com/macros/s/AKfycbx6XCkuzKen74IvzJSvsmzRBTmPqhV53oC_9EuvDsML2-Fszb9rLVThLneSANlaA4OR/exec';
 
     var listLoaded = false;
     var teamLoaded = false;
@@ -1208,9 +1435,13 @@
     var albumsLoaded = false;
     var artistsLoaded = false;
     var weeklyPostsLoaded = false;
+    var changelogLoaded = false;
 
     var allPosts = [];
     var allWeeklyPosts = [];
+    var allSongs = [];
+    var allAlbums = [];
+    var allArtists = [];
     var siteSettings = { formUrl: '', showViewCount: false, defaultImage: '', social: {} };
     var lastPath = '';
     var currentInterviewId = null;
@@ -1327,11 +1558,11 @@
       return match ? 'https://open.spotify.com/embed/' + match[1] + '/' + match[2] : str;
     }
 
-    function getAppleMusicEmbedUrl(url) {
+    function getApplePodcastsEmbedUrl(url) {
       if (!url) return null;
       var str = String(url).trim();
-      if (str.indexOf('embed.music.apple.com') !== -1) return str;
-      return str.replace(/music\.apple\.com/i, 'embed.music.apple.com');
+      if (str.indexOf('embed.podcasts.apple.com') !== -1) return str;
+      return str.replace(/podcasts\.apple\.com/i, 'embed.podcasts.apple.com');
     }
 
     function getYouTubeEmbedUrl(url) {
@@ -1416,6 +1647,8 @@
       if (path === 'songs') { showSongsView(); return; }
       if (path === 'albums') { showAlbumsView(); return; }
       if (path === 'artists') { showArtistsView(); return; }
+      if (path === 'archive') { showArchiveView(); return; }
+      if (path === 'changelog') { showChangelogView(); return; }
       showHomeView();
     }
 
@@ -1429,6 +1662,8 @@
       document.getElementById('view-songs').style.display = 'none';
       document.getElementById('view-albums').style.display = 'none';
       document.getElementById('view-artists').style.display = 'none';
+      document.getElementById('view-archive').style.display = 'none';
+      document.getElementById('view-changelog').style.display = 'none';
       document.getElementById('view-weekly-list').style.display = 'none';
       document.getElementById('view-weekly-post').style.display = 'none';
       document.getElementById('app-shell').style.display = 'none';
@@ -1499,6 +1734,77 @@
       if (!artistsLoaded) loadArtists();
     }
 
+    function showArchiveView() {
+      hideAllViews();
+      document.getElementById('topbar-subtitle').textContent = 'Archive';
+      document.getElementById('crumb-back').style.display = '';
+      document.getElementById('view-archive').style.display = '';
+      setPath('archive');
+      if (listLoaded) {
+        renderArchiveGrid(allPosts);
+      } else {
+        document.getElementById('archive-content').innerHTML = '<div class="loading">Loading archive&hellip;</div>';
+        api('posts').then(function (list) {
+          listLoaded = true;
+          allPosts = list || [];
+          renderArchiveGrid(allPosts);
+          renderRail();
+        }).catch(function (err) {
+          document.getElementById('archive-content').innerHTML =
+            '<div class="empty">Couldn\'t load archive: ' + escapeHtml(err.message || err) +
+            '<br><span style="cursor:pointer;text-decoration:underline;font-weight:800;" onclick="showArchiveView()">Tap to retry</span></div>';
+        });
+      }
+    }
+
+    function renderArchiveGrid(posts) {
+      var container = document.getElementById('archive-content');
+      var validPosts = (posts || []).filter(function (item) { return !isNA(item.artist); });
+
+      if (!validPosts.length) {
+        container.innerHTML = '<div class="empty">No issues yet.</div>';
+        return;
+      }
+
+      var sorted = validPosts.slice().sort(function (a, b) {
+        var an = parseInt(String(a.issueNum).replace(/[^0-9]/g, ''), 10);
+        var bn = parseInt(String(b.issueNum).replace(/[^0-9]/g, ''), 10);
+        if (isNaN(an)) an = -1;
+        if (isNaN(bn)) bn = -1;
+        return bn - an;
+      });
+
+      container.innerHTML = '<div class="archive-grid">' +
+        sorted.map(function (item) {
+          var parsed = parseArtistMeta(item.artist);
+          var lockedClass = item.isLocked ? ' locked' : '';
+          var num = item.issueNum ? String(item.issueNum).replace(/[^0-9]/g, '') : '?';
+          return (
+            '<div class="archive-chip' + lockedClass + '" data-id="' + escapeHtml(item.id) + '" data-locked="' + item.isLocked + '">' +
+              '<div class="archive-num display">#' + escapeHtml(num) + '</div>' +
+              '<div class="archive-sub">' + escapeHtml(parsed.name) + '</div>' +
+            '</div>'
+          );
+        }).join('') +
+      '</div>';
+
+      container.querySelectorAll('.archive-chip').forEach(function (chip) {
+        chip.addEventListener('click', function () {
+          if (chip.getAttribute('data-locked') === 'true') return;
+          showPostView(chip.getAttribute('data-id'));
+        });
+      });
+    }
+
+    function showChangelogView() {
+      hideAllViews();
+      document.getElementById('topbar-subtitle').textContent = 'Changelog';
+      document.getElementById('crumb-back').style.display = '';
+      document.getElementById('view-changelog').style.display = '';
+      setPath('changelog');
+      if (!changelogLoaded) loadChangelog();
+    }
+
     function showListView() {
       hideAllViews();
       document.getElementById('topbar-subtitle').textContent = 'Interviews';
@@ -1532,6 +1838,66 @@
     document.getElementById('tile-songs').addEventListener('click', showSongsView);
     document.getElementById('tile-albums').addEventListener('click', showAlbumsView);
     document.getElementById('tile-artists').addEventListener('click', showArtistsView);
+    document.getElementById('tile-archive').addEventListener('click', showArchiveView);
+    document.getElementById('changelog-btn').addEventListener('click', showChangelogView);
+
+    // ---------- THEME TOGGLE ----------
+    function applyThemeIcon() {
+      var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      document.getElementById('theme-toggle-btn').textContent = isDark ? '☀️' : '🌙';
+    }
+    function toggleTheme() {
+      var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      if (isDark) {
+        document.documentElement.removeAttribute('data-theme');
+        try { localStorage.setItem('im_theme', 'light'); } catch (e) {}
+      } else {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        try { localStorage.setItem('im_theme', 'dark'); } catch (e) {}
+      }
+      applyThemeIcon();
+    }
+    document.getElementById('theme-toggle-btn').addEventListener('click', toggleTheme);
+    applyThemeIcon();
+
+    // ---------- SEARCH (client-side filter over already-loaded lists) ----------
+    function textMatches(query, fields) {
+      if (!query) return true;
+      var q = query.trim().toLowerCase();
+      if (!q) return true;
+      return fields.some(function (f) {
+        return String(f || '').toLowerCase().indexOf(q) !== -1;
+      });
+    }
+
+    function wireSearch(inputId, getList, renderFn, fieldsFn) {
+      var input = document.getElementById(inputId);
+      if (!input) return;
+      input.addEventListener('input', function () {
+        var q = input.value;
+        var list = getList();
+        var filtered = !q.trim() ? list : list.filter(function (item) {
+          return textMatches(q, fieldsFn(item));
+        });
+        renderFn(filtered);
+      });
+    }
+
+    wireSearch('weekly-search', function () { return allWeeklyPosts; }, renderWeeklyPostsList, function (item) {
+      return [item.artist, item.author, item.issueNum];
+    });
+    wireSearch('songs-search', function () { return allSongs; }, renderSongs, function (item) {
+      return [item.title, item.artist];
+    });
+    wireSearch('albums-search', function () { return allAlbums; }, renderAlbums, function (item) {
+      return [item.title, item.artist];
+    });
+    wireSearch('artists-search', function () { return allArtists; }, renderArtists, function (item) {
+      return [item.artist];
+    });
+    wireSearch('interviews-search', function () { return allPosts; }, renderList, function (item) {
+      return [item.artist, item.interviewer, item.issueNum];
+    });
     document.getElementById('back-link').addEventListener('click', showListView);
 
     document.getElementById('copy-interview-link-btn').addEventListener('click', function () {
@@ -1765,7 +2131,8 @@
       api('songs')
         .then(function (songs) {
           songsLoaded = true;
-          renderSongs(songs);
+          allSongs = songs || [];
+          renderSongs(allSongs);
         })
         .catch(function (err) {
           document.getElementById('songs-content').innerHTML =
@@ -1810,7 +2177,8 @@
       api('albums')
         .then(function (albums) {
           albumsLoaded = true;
-          renderAlbums(albums);
+          allAlbums = albums || [];
+          renderAlbums(allAlbums);
         })
         .catch(function (err) {
           document.getElementById('albums-content').innerHTML =
@@ -1855,7 +2223,8 @@
       api('artists')
         .then(function (artists) {
           artistsLoaded = true;
-          renderArtists(artists);
+          allArtists = artists || [];
+          renderArtists(allArtists);
         })
         .catch(function (err) {
           document.getElementById('artists-content').innerHTML =
@@ -1892,6 +2261,29 @@
           '</div>'
         );
       }).join('');
+    }
+
+    // ---------- CHANGELOG ----------
+    function loadChangelog() {
+      api('changelog')
+        .then(function (result) {
+          changelogLoaded = true;
+          renderChangelog(result);
+        })
+        .catch(function (err) {
+          document.getElementById('changelog-content').innerHTML =
+            '<div class="empty">Couldn\'t load changelog: ' + escapeHtml(err.message || err) +
+            '<br><span style="cursor:pointer;text-decoration:underline;font-weight:800;" onclick="loadChangelog()">Tap to retry</span></div>';
+        });
+    }
+
+    function renderChangelog(result) {
+      var container = document.getElementById('changelog-content');
+      if (!result || !result.configured) {
+        container.innerHTML = '<div class="empty">No changelog has been set up yet. Add a "Changelog Doc Link" row to the Settings sheet.</div>';
+        return;
+      }
+      container.innerHTML = result.contentHtml || '<div class="empty">The changelog doc is empty.</div>';
     }
 
     // ---------- INTERVIEWS LIST & DETAIL ----------
@@ -2091,7 +2483,7 @@
 
       var audioBtns = [];
       if (post.spotify) audioBtns.push('<button type="button" class="audio-launch-btn spotify" data-kind="spotify" data-url="' + escapeHtml(post.spotify) + '">&#9654; Spotify</button>');
-      if (post.apple) audioBtns.push('<button type="button" class="audio-launch-btn apple" data-kind="apple" data-url="' + escapeHtml(post.apple) + '">&#9654; Apple Music</button>');
+      if (post.apple) audioBtns.push('<button type="button" class="audio-launch-btn apple" data-kind="apple" data-url="' + escapeHtml(post.apple) + '">&#9654; Apple Podcasts</button>');
       if (post.youtube) audioBtns.push('<button type="button" class="audio-launch-btn youtube" data-kind="youtube" data-url="' + escapeHtml(post.youtube) + '">&#9654; YouTube</button>');
       var audioButtonsHtml = audioBtns.length ? '<div class="audio-launch-row">' + audioBtns.join('') + '</div>' : '';
 
@@ -2192,7 +2584,7 @@
         var spEmbed = getSpotifyEmbedUrl(url) || url;
         iframeHtml = '<iframe src="' + escapeHtml(spEmbed) + '" height="152" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>';
       } else if (kind === 'apple') {
-        var amEmbed = getAppleMusicEmbedUrl(url) || url;
+        var amEmbed = getApplePodcastsEmbedUrl(url) || url;
         iframeHtml = '<iframe src="' + escapeHtml(amEmbed) + '" height="175" allow="autoplay *; encrypted-media *;" sandbox="allow-forms allow-popups allow-same-origin allow-scripts allow-storage-access-by-user-activation allow-top-navigation-by-user-activation"></iframe>';
       }
 
@@ -2249,6 +2641,10 @@
     })();
 
     // ---------- INITIALIZATION ----------
+    var rssLinkEl = document.getElementById('rss-link');
+    if (rssLinkEl) {
+      rssLinkEl.href = API_BASE_URL + (API_BASE_URL.indexOf('?') === -1 ? '?' : '&') + 'action=rss';
+    }
     loadSettings();
     routeFromPath();
   </script>
