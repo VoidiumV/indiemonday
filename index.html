@@ -3,6 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Indie Monday — Highlighting Independent Artists</title>
+  <meta name="description" content="Highlighting Independent Artists — new interviews, songs, albums, and artist features every Monday.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Indie Monday">
+  <meta property="og:title" content="Indie Monday — Highlighting Independent Artists">
+  <meta property="og:description" content="Highlighting Independent Artists — new interviews, songs, albums, and artist features every Monday.">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Indie Monday — Highlighting Independent Artists">
+  <meta name="twitter:description" content="Highlighting Independent Artists — new interviews, songs, albums, and artist features every Monday.">
+  <!-- Note: per-page (interview/weekly-post) title, description, and image
+       are injected server-side for social crawlers by functions/_middleware.js
+       — see that file for setup instructions. -->
   <script>
     // Runs before CSS paints so the saved theme applies immediately —
     // no flash of the wrong theme on load. Persists across visits via
@@ -120,6 +132,123 @@
       padding: 60px 20px;
       letter-spacing: 0.3px;
     }
+
+    /* ---------- skeleton loading placeholders ---------- */
+    @keyframes skeleton-pulse {
+      0% { opacity: 0.55; }
+      50% { opacity: 1; }
+      100% { opacity: 0.55; }
+    }
+
+    .skeleton-wrap { display: flex; flex-direction: column; gap: 18px; }
+
+    .skeleton-card {
+      display: flex;
+      align-items: stretch;
+      background: var(--paper);
+      border: 3px solid var(--ink);
+      box-shadow: 5px 5px 0 rgba(13,13,13,0.18);
+      overflow: hidden;
+      height: 140px;
+      animation: skeleton-pulse 1.4s ease-in-out infinite;
+    }
+    .skeleton-card .skeleton-avatar {
+      width: 140px;
+      background: var(--dot-pattern);
+      flex-shrink: 0;
+      border-right: 3px solid var(--ink);
+    }
+    .skeleton-card .skeleton-lines {
+      flex: 1;
+      padding: 18px 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 10px;
+    }
+    .skeleton-line {
+      height: 12px;
+      background: var(--dot-pattern);
+      border-radius: 4px;
+    }
+    .skeleton-line.w-25 { width: 25%; }
+    .skeleton-line.w-30 { width: 30%; }
+    .skeleton-line.w-45 { width: 45%; }
+    .skeleton-line.w-60 { width: 60%; height: 20px; }
+
+    .skeleton-feature-card {
+      display: flex;
+      background: var(--paper);
+      border: 3px solid var(--ink);
+      box-shadow: 5px 5px 0 rgba(13,13,13,0.18);
+      overflow: hidden;
+      height: 150px;
+      margin-bottom: 20px;
+      animation: skeleton-pulse 1.4s ease-in-out infinite;
+    }
+    .skeleton-feature-card .skeleton-art {
+      width: 150px;
+      background: var(--dot-pattern);
+      flex-shrink: 0;
+      border-right: 3px solid var(--ink);
+    }
+    .skeleton-feature-card .skeleton-lines {
+      flex: 1;
+      padding: 20px 22px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .skeleton-team-card {
+      background: var(--paper);
+      border: 3px solid var(--ink);
+      box-shadow: 5px 5px 0 rgba(13,13,13,0.18);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      animation: skeleton-pulse 1.4s ease-in-out infinite;
+    }
+    .skeleton-team-card .skeleton-circle {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: var(--dot-pattern);
+      margin-bottom: 14px;
+    }
+    .skeleton-team-card .skeleton-line { width: 60%; height: 18px; margin-bottom: 10px; }
+    .skeleton-team-card .skeleton-line.w-40 { width: 40%; height: 12px; }
+
+    /* ---------- load more ---------- */
+    .load-more-wrap {
+      text-align: center;
+      margin: 10px 0 6px;
+    }
+    .load-more-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'Manrope', 'Helvetica Neue', Arial, sans-serif;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      padding: 12px 22px;
+      border: 2px solid var(--ink);
+      background: var(--btn-bg);
+      color: var(--ink);
+      cursor: pointer;
+      box-shadow: 3px 3px 0 var(--ink);
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+    }
+    .load-more-btn:hover {
+      transform: translate(-2px, -2px);
+      box-shadow: 5px 5px 0 var(--ink);
+    }
+    .load-more-btn .load-more-count { opacity: 0.6; font-weight: 700; }
 
     /* ---------- topbar ---------- */
     .topbar {
@@ -1408,7 +1537,7 @@
     // ================================================================
     // CONFIG — point this at your deployed Apps Script Web App /exec URL
     // ================================================================
-    var API_BASE_URL = 'https://script.google.com/macros/s/AKfycbx6XCkuzKen74IvzJSvsmzRBTmPqhV53oC_9EuvDsML2-Fszb9rLVThLneSANlaA4OR/exec';
+    var API_BASE_URL = 'https://script.google.com/macros/s/AKfycbwEHBMF7-ZXETA3ThI_BShWek5AcFXBKkDPXx2LWWTTQ2FI86i2WFH4SYSv82mB1ZbN/exec';
 
     // Warm up the connection to the Apps Script domain immediately, before
     // the first real request fires — shaves off DNS/TLS handshake time.
@@ -1442,6 +1571,28 @@
     var lastPath = '';
     var currentInterviewId = null;
     var currentWeeklyId = null;
+
+    // ---------- PAGINATION ("Load More") ----------
+    var PAGE_SIZE = 12;
+    var paginationState = {
+      interviews: PAGE_SIZE,
+      weekly: PAGE_SIZE,
+      songs: PAGE_SIZE,
+      albums: PAGE_SIZE,
+      artists: PAGE_SIZE
+    };
+
+    function renderLoadMoreHtml(remaining) {
+      if (remaining <= 0) return '';
+      var nextBatch = Math.min(remaining, PAGE_SIZE);
+      return (
+        '<div class="load-more-wrap">' +
+          '<button type="button" class="load-more-btn">Load ' + nextBatch + ' More ' +
+            '<span class="load-more-count">(' + remaining + ' left)</span>' +
+          '</button>' +
+        '</div>'
+      );
+    }
 
     // ---------- JSONP API CLIENT (avoids CORS issues talking to Apps Script) ----------
     // Two reliability fixes here:
@@ -1541,6 +1692,41 @@
       if (!val) return true;
       var clean = String(val).trim().toUpperCase();
       return clean === '' || clean === 'N/A' || clean === 'NA';
+    }
+
+    // ---------- SKELETON LOADING PLACEHOLDERS ----------
+    function skeletonCardsHtml(count) {
+      var card = '<div class="skeleton-card">' +
+        '<div class="skeleton-avatar"></div>' +
+        '<div class="skeleton-lines">' +
+          '<div class="skeleton-line w-25"></div>' +
+          '<div class="skeleton-line w-60"></div>' +
+          '<div class="skeleton-line w-45"></div>' +
+          '<div class="skeleton-line w-30"></div>' +
+        '</div>' +
+      '</div>';
+      return '<div class="skeleton-wrap">' + new Array(count).fill(card).join('') + '</div>';
+    }
+
+    function skeletonFeatureCardsHtml(count) {
+      var card = '<div class="skeleton-feature-card">' +
+        '<div class="skeleton-art"></div>' +
+        '<div class="skeleton-lines">' +
+          '<div class="skeleton-line w-60"></div>' +
+          '<div class="skeleton-line w-45"></div>' +
+          '<div class="skeleton-line w-30"></div>' +
+        '</div>' +
+      '</div>';
+      return new Array(count).fill(card).join('');
+    }
+
+    function skeletonTeamCardsHtml(count) {
+      var card = '<div class="skeleton-team-card">' +
+        '<div class="skeleton-circle"></div>' +
+        '<div class="skeleton-line"></div>' +
+        '<div class="skeleton-line w-40"></div>' +
+      '</div>';
+      return '<div class="team-grid">' + new Array(count).fill(card).join('') + '</div>';
     }
 
     function parseArtistMeta(rawArtist) {
@@ -1810,7 +1996,7 @@
       });
     }
 
-    function wireSearch(inputId, getList, renderFn, fieldsFn) {
+    function wireSearch(inputId, getList, renderFn, fieldsFn, paginationKey) {
       var input = document.getElementById(inputId);
       if (!input) return;
       input.addEventListener('input', function () {
@@ -1819,25 +2005,26 @@
         var filtered = !q.trim() ? list : list.filter(function (item) {
           return textMatches(q, fieldsFn(item));
         });
+        if (paginationKey) paginationState[paginationKey] = PAGE_SIZE;
         renderFn(filtered);
       });
     }
 
     wireSearch('weekly-search', function () { return allWeeklyPosts; }, renderWeeklyPostsList, function (item) {
       return [item.artist, item.author, item.issueNum];
-    });
+    }, 'weekly');
     wireSearch('songs-search', function () { return allSongs; }, renderSongs, function (item) {
       return [item.title, item.artist];
-    });
+    }, 'songs');
     wireSearch('albums-search', function () { return allAlbums; }, renderAlbums, function (item) {
       return [item.title, item.artist];
-    });
+    }, 'albums');
     wireSearch('artists-search', function () { return allArtists; }, renderArtists, function (item) {
       return [item.artist];
-    });
+    }, 'artists');
     wireSearch('interviews-search', function () { return allPosts; }, renderList, function (item) {
       return [item.artist, item.interviewer, item.issueNum];
-    });
+    }, 'interviews');
     document.getElementById('back-link').addEventListener('click', showListView);
 
     document.getElementById('copy-interview-link-btn').addEventListener('click', function () {
@@ -1875,6 +2062,7 @@
 
     // ---------- WEEKLY POSTS ----------
     function loadWeeklyPosts() {
+      document.getElementById('weekly-posts-content').innerHTML = skeletonCardsHtml(6);
       api('weeklyPosts')
         .then(function (posts) {
           weeklyPostsLoaded = true;
@@ -1897,7 +2085,10 @@
         return;
       }
 
-      container.innerHTML = validPosts.map(function (item) {
+      var shown = Math.min(paginationState.weekly, validPosts.length);
+      var visiblePosts = validPosts.slice(0, shown);
+
+      container.innerHTML = visiblePosts.map(function (item) {
         var fallback = getFallbackImage();
         var img = item.image ? escapeHtml(item.image) : fallback;
         var viewBadge = (siteSettings.showViewCount && item.viewCount !== undefined && !item.isLocked)
@@ -1925,7 +2116,7 @@
             '</div>' +
           '</div>'
         );
-      }).join('');
+      }).join('') + renderLoadMoreHtml(validPosts.length - shown);
 
       container.querySelectorAll('.weekly-card').forEach(function (card) {
         card.addEventListener('click', function () {
@@ -1933,6 +2124,14 @@
           showWeeklyPostView(card.getAttribute('data-id'));
         });
       });
+
+      var loadMoreBtn = container.querySelector('.load-more-btn');
+      if (loadMoreBtn) {
+        loadMoreBtn.addEventListener('click', function () {
+          paginationState.weekly += PAGE_SIZE;
+          renderWeeklyPostsList(posts);
+        });
+      }
     }
 
     function loadWeeklyPost(id) {
@@ -2026,6 +2225,7 @@
 
     // ---------- TEAM ----------
     function loadTeam() {
+      document.getElementById('team-content').innerHTML = skeletonTeamCardsHtml(4);
       api('team')
         .then(function (team) {
           teamLoaded = true;
@@ -2068,6 +2268,7 @@
 
     // ---------- SONGS ----------
     function loadSongs() {
+      document.getElementById('songs-content').innerHTML = skeletonFeatureCardsHtml(4);
       api('songs')
         .then(function (songs) {
           songsLoaded = true;
@@ -2094,7 +2295,10 @@
         return;
       }
 
-      container.innerHTML = validSongs.map(function (item) {
+      var shown = Math.min(paginationState.songs, validSongs.length);
+      var visibleSongs = validSongs.slice(0, shown);
+
+      container.innerHTML = visibleSongs.map(function (item) {
         var img = item.cover ? escapeHtml(item.cover) : fallback;
         var issueLabel = item.issueNum ? issueNumStr(item.issueNum) + ' • ' : '';
 
@@ -2109,11 +2313,20 @@
             '</div>' +
           '</div>'
         );
-      }).join('');
+      }).join('') + renderLoadMoreHtml(validSongs.length - shown);
+
+      var loadMoreBtn = container.querySelector('.load-more-btn');
+      if (loadMoreBtn) {
+        loadMoreBtn.addEventListener('click', function () {
+          paginationState.songs += PAGE_SIZE;
+          renderSongs(songs);
+        });
+      }
     }
 
     // ---------- ALBUMS ----------
     function loadAlbums() {
+      document.getElementById('albums-content').innerHTML = skeletonFeatureCardsHtml(4);
       api('albums')
         .then(function (albums) {
           albumsLoaded = true;
@@ -2140,7 +2353,10 @@
         return;
       }
 
-      container.innerHTML = validAlbums.map(function (item) {
+      var shown = Math.min(paginationState.albums, validAlbums.length);
+      var visibleAlbums = validAlbums.slice(0, shown);
+
+      container.innerHTML = visibleAlbums.map(function (item) {
         var img = item.cover ? escapeHtml(item.cover) : fallback;
         var issueLabel = item.issueNum ? issueNumStr(item.issueNum) + ' • ' : '';
 
@@ -2155,11 +2371,20 @@
             '</div>' +
           '</div>'
         );
-      }).join('');
+      }).join('') + renderLoadMoreHtml(validAlbums.length - shown);
+
+      var loadMoreBtn = container.querySelector('.load-more-btn');
+      if (loadMoreBtn) {
+        loadMoreBtn.addEventListener('click', function () {
+          paginationState.albums += PAGE_SIZE;
+          renderAlbums(albums);
+        });
+      }
     }
 
     // ---------- ARTISTS ----------
     function loadArtists() {
+      document.getElementById('artists-content').innerHTML = skeletonFeatureCardsHtml(4);
       api('artists')
         .then(function (artists) {
           artistsLoaded = true;
@@ -2186,7 +2411,10 @@
         return;
       }
 
-      container.innerHTML = validArtists.map(function (item) {
+      var shown = Math.min(paginationState.artists, validArtists.length);
+      var visibleArtists = validArtists.slice(0, shown);
+
+      container.innerHTML = visibleArtists.map(function (item) {
         var img = item.image ? escapeHtml(item.image) : fallback;
         var issueLabel = item.issueNum ? issueNumStr(item.issueNum) + ' • ' : '';
 
@@ -2200,7 +2428,15 @@
             '</div>' +
           '</div>'
         );
-      }).join('');
+      }).join('') + renderLoadMoreHtml(validArtists.length - shown);
+
+      var loadMoreBtn = container.querySelector('.load-more-btn');
+      if (loadMoreBtn) {
+        loadMoreBtn.addEventListener('click', function () {
+          paginationState.artists += PAGE_SIZE;
+          renderArtists(artists);
+        });
+      }
     }
 
     // ---------- CHANGELOG ----------
@@ -2228,6 +2464,7 @@
 
     // ---------- INTERVIEWS LIST & DETAIL ----------
     function loadList() {
+      document.getElementById('feed').innerHTML = skeletonCardsHtml(6);
       api('posts')
         .then(function (list) {
           listLoaded = true;
@@ -2255,7 +2492,10 @@
         return;
       }
 
-      feed.innerHTML = validPosts.map(function (item) {
+      var shown = Math.min(paginationState.interviews, validPosts.length);
+      var visiblePosts = validPosts.slice(0, shown);
+
+      feed.innerHTML = visiblePosts.map(function (item) {
         var img = item.image ? escapeHtml(item.image) : fallback;
         var avatarStyle = item.cardColor ? ' style="background:' + escapeHtml(item.cardColor) + '"' : '';
 
@@ -2287,7 +2527,7 @@
             '</div>' +
           '</div>'
         );
-      }).join('');
+      }).join('') + renderLoadMoreHtml(validPosts.length - shown);
 
       feed.querySelectorAll('.card').forEach(function (card) {
         card.addEventListener('click', function () {
@@ -2295,6 +2535,14 @@
           showPostView(card.getAttribute('data-id'));
         });
       });
+
+      var loadMoreBtn = feed.querySelector('.load-more-btn');
+      if (loadMoreBtn) {
+        loadMoreBtn.addEventListener('click', function () {
+          paginationState.interviews += PAGE_SIZE;
+          renderList(list);
+        });
+      }
     }
 
     // ---------- LISTEN / PLAYLIST FOOTER ----------
