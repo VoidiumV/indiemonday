@@ -105,7 +105,7 @@
       display: inline-block;
       font-size: 18px;
       line-height: 1;
-      color: var(--sky);
+      color: #fff;
       transform: translateY(-1px);
     }
 
@@ -274,7 +274,7 @@
       font-weight: 800;
       letter-spacing: 1.5px;
       text-transform: uppercase;
-      color: var(--sky-soft);
+      color: #fff;
       opacity: 0.65;
       cursor: pointer;
       user-select: none;
@@ -295,7 +295,7 @@
       font-size: 11px;
       letter-spacing: 2px;
       text-transform: uppercase;
-      color: var(--sky-soft);
+      color: #fff;
       font-weight: 700;
       display: block;
       margin-top: 4px;
@@ -443,47 +443,6 @@
     .search-box::placeholder { color: var(--ink-soft); font-weight: 600; }
     .search-box:focus { box-shadow: 4px 4px 0 var(--ink); }
 
-    .archive-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
-      gap: 12px;
-    }
-    .archive-chip {
-      background: var(--paper);
-      border: 3px solid var(--ink);
-      box-shadow: 3px 3px 0 rgba(13,13,13,0.18);
-      padding: 14px 8px;
-      text-align: center;
-      cursor: pointer;
-      transition: transform 0.12s ease, box-shadow 0.12s ease;
-    }
-    .archive-chip:hover {
-      transform: translate(-2px, -2px);
-      box-shadow: 5px 5px 0 rgba(13,13,13,0.24);
-    }
-    .archive-chip.locked {
-      cursor: not-allowed;
-      opacity: 0.55;
-    }
-    .archive-chip.locked:hover {
-      transform: none;
-      box-shadow: 3px 3px 0 rgba(13,13,13,0.18);
-    }
-    .archive-chip .archive-num {
-      font-family: 'Anton', 'Helvetica Neue', Arial, sans-serif;
-      font-size: 19px;
-      line-height: 1;
-    }
-    .archive-chip .archive-sub {
-      font-size: 10.5px;
-      font-weight: 700;
-      color: var(--ink-soft);
-      margin-top: 6px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
     .back-row {
       max-width: 740px;
       margin: 0 auto;
@@ -613,7 +572,7 @@
       font-weight: 800;
       letter-spacing: 0.5px;
       background: var(--ink);
-      color: #fff;
+      color: var(--sky);
       padding: 2px 7px;
       border-radius: 4px;
       text-transform: uppercase;
@@ -678,7 +637,7 @@
       font-size: 11px;
       font-weight: 800;
       background: var(--ink);
-      color: #fff;
+      color: var(--sky);
       padding: 2px 7px;
       border-radius: 4px;
     }
@@ -786,7 +745,7 @@
       align-items: center;
       gap: 6px;
       background: var(--ink);
-      color: #fff;
+      color: var(--sky);
       border-radius: 999px;
       padding: 5px 13px;
       font-size: 11px;
@@ -818,7 +777,7 @@
       gap: 14px;
       font-size: 13px;
       font-weight: 600;
-      color: rgba(13,13,13,0.68);
+      color: var(--ink-soft);
     }
 
     .hero-meta b { color: var(--ink); font-weight: 800; }
@@ -999,7 +958,7 @@
     .social-icon-link svg {
       width: 19px;
       height: 19px;
-      fill: #fff;
+      fill: var(--sky);
     }
 
     /* ---------- side rails ---------- */
@@ -1221,7 +1180,7 @@
       align-items: center;
       justify-content: space-between;
       background: var(--ink);
-      color: #fff;
+      color: var(--sky);
       padding: 10px 14px;
       cursor: move;
       user-select: none;
@@ -1354,11 +1313,6 @@
         <div class="nav-tile clickable" id="tile-artists">
           <p class="display nav-tile-title">Artist of the Week</p>
           <p class="nav-tile-desc">An artist who deserves more recognition each week.</p>
-        </div>
-
-        <div class="nav-tile clickable" id="tile-archive">
-          <p class="display nav-tile-title">Archive</p>
-          <p class="nav-tile-desc">Browse every issue by number.</p>
         </div>
 
         <div class="nav-tile span-2 clickable" id="tile-our-team">
@@ -1537,7 +1491,7 @@
     // ================================================================
     // CONFIG — point this at your deployed Apps Script Web App /exec URL
     // ================================================================
-    var API_BASE_URL = 'https://script.google.com/macros/s/AKfycbwEHBMF7-ZXETA3ThI_BShWek5AcFXBKkDPXx2LWWTTQ2FI86i2WFH4SYSv82mB1ZbN/exec';
+    var API_BASE_URL = 'https://script.google.com/macros/s/AKfycbyT0DwiBd2QsZ_R22-L2lHySEjcMnRWS9VeGEaRzOjGCiuKKQq9FCwCNHuRPLRVYirG/exec';
 
     // Warm up the connection to the Apps Script domain immediately, before
     // the first real request fires — shaves off DNS/TLS handshake time.
@@ -1692,6 +1646,30 @@
       if (!val) return true;
       var clean = String(val).trim().toUpperCase();
       return clean === '' || clean === 'N/A' || clean === 'NA';
+    }
+
+    // ---------- ERROR + RETRY RENDERING ----------
+    // Renders an error message with a "Tap to retry" control inside the given
+    // container. Wired up with addEventListener (rather than an inline
+    // onclick="..." string) so it can't silently fail to bind, and gives
+    // immediate visual feedback ("Retrying…" + disabled) so it's obvious the
+    // tap registered even while the retry request is still in flight.
+    function renderErrorWithRetry(container, message, retryFn) {
+      if (!container) return;
+      container.innerHTML =
+        '<div class="empty">' + message +
+        '<br><span class="retry-link" style="cursor:pointer;text-decoration:underline;font-weight:800;">Tap to retry</span></div>';
+
+      var retryEl = container.querySelector('.retry-link');
+      if (!retryEl) return;
+
+      retryEl.addEventListener('click', function onRetryClick() {
+        retryEl.removeEventListener('click', onRetryClick);
+        retryEl.style.pointerEvents = 'none';
+        retryEl.style.opacity = '0.6';
+        retryEl.textContent = 'Retrying…';
+        retryFn();
+      });
     }
 
     // ---------- SKELETON LOADING PLACEHOLDERS ----------
@@ -2070,9 +2048,11 @@
           renderWeeklyPostsList(allWeeklyPosts);
         })
         .catch(function (err) {
-          document.getElementById('weekly-posts-content').innerHTML =
-            '<div class="empty">Couldn\'t load weekly posts: ' + escapeHtml(err.message || err) +
-            '<br><span style="cursor:pointer;text-decoration:underline;font-weight:800;" onclick="loadWeeklyPosts()">Tap to retry</span></div>';
+          renderErrorWithRetry(
+            document.getElementById('weekly-posts-content'),
+            'Couldn\'t load weekly posts: ' + escapeHtml(err.message || err),
+            loadWeeklyPosts
+          );
         });
     }
 
@@ -2138,9 +2118,11 @@
       api('weeklyPost', { id: id })
         .then(renderWeeklyPost)
         .catch(function (err) {
-          document.getElementById('weekly-post-content').innerHTML =
-            '<div class="empty">Couldn\'t load post: ' + escapeHtml(err.message || err) +
-            '<br><span style="cursor:pointer;text-decoration:underline;font-weight:800;" onclick="loadWeeklyPost(currentWeeklyId)">Tap to retry</span></div>';
+          renderErrorWithRetry(
+            document.getElementById('weekly-post-content'),
+            'Couldn\'t load post: ' + escapeHtml(err.message || err),
+            function () { loadWeeklyPost(id); }
+          );
         });
     }
 
@@ -2168,7 +2150,7 @@
       document.getElementById('weekly-post-hero-wrap').innerHTML =
         '<div class="hero">' +
           '<div class="hero-text">' +
-            '<span class="tag-pill"><span class="sparkle" style="font-size:12px;color:#fff">✦</span>' + escapeHtml(issueFormatted) + '</span>' +
+            '<span class="tag-pill"><span class="sparkle" style="font-size:12px;color:var(--sky)">✦</span>' + escapeHtml(issueFormatted) + '</span>' +
             '<div class="title display">' + escapeHtml(issueFormatted) + titleArtist + '</div>' +
             '<div class="hero-meta">' +
               (post.author ? '<span>By <b>' + escapeHtml(post.author) + '</b></span>' : '') +
@@ -2232,9 +2214,11 @@
           renderTeam(team);
         })
         .catch(function (err) {
-          document.getElementById('team-content').innerHTML =
-            '<div class="empty">Couldn\'t load team info: ' + escapeHtml(err.message || err) +
-            '<br><span style="cursor:pointer;text-decoration:underline;font-weight:800;" onclick="loadTeam()">Tap to retry</span></div>';
+          renderErrorWithRetry(
+            document.getElementById('team-content'),
+            'Couldn\'t load team info: ' + escapeHtml(err.message || err),
+            loadTeam
+          );
         });
     }
 
@@ -2276,9 +2260,11 @@
           renderSongs(allSongs);
         })
         .catch(function (err) {
-          document.getElementById('songs-content').innerHTML =
-            '<div class="empty">Couldn\'t load songs: ' + escapeHtml(err.message || err) +
-            '<br><span style="cursor:pointer;text-decoration:underline;font-weight:800;" onclick="loadSongs()">Tap to retry</span></div>';
+          renderErrorWithRetry(
+            document.getElementById('songs-content'),
+            'Couldn\'t load songs: ' + escapeHtml(err.message || err),
+            loadSongs
+          );
         });
     }
 
@@ -2334,9 +2320,11 @@
           renderAlbums(allAlbums);
         })
         .catch(function (err) {
-          document.getElementById('albums-content').innerHTML =
-            '<div class="empty">Couldn\'t load albums: ' + escapeHtml(err.message || err) +
-            '<br><span style="cursor:pointer;text-decoration:underline;font-weight:800;" onclick="loadAlbums()">Tap to retry</span></div>';
+          renderErrorWithRetry(
+            document.getElementById('albums-content'),
+            'Couldn\'t load albums: ' + escapeHtml(err.message || err),
+            loadAlbums
+          );
         });
     }
 
@@ -2392,9 +2380,11 @@
           renderArtists(allArtists);
         })
         .catch(function (err) {
-          document.getElementById('artists-content').innerHTML =
-            '<div class="empty">Couldn\'t load artists: ' + escapeHtml(err.message || err) +
-            '<br><span style="cursor:pointer;text-decoration:underline;font-weight:800;" onclick="loadArtists()">Tap to retry</span></div>';
+          renderErrorWithRetry(
+            document.getElementById('artists-content'),
+            'Couldn\'t load artists: ' + escapeHtml(err.message || err),
+            loadArtists
+          );
         });
     }
 
@@ -2447,9 +2437,11 @@
           renderChangelog(result);
         })
         .catch(function (err) {
-          document.getElementById('changelog-content').innerHTML =
-            '<div class="empty">Couldn\'t load changelog: ' + escapeHtml(err.message || err) +
-            '<br><span style="cursor:pointer;text-decoration:underline;font-weight:800;" onclick="loadChangelog()">Tap to retry</span></div>';
+          renderErrorWithRetry(
+            document.getElementById('changelog-content'),
+            'Couldn\'t load changelog: ' + escapeHtml(err.message || err),
+            loadChangelog
+          );
         });
     }
 
@@ -2473,9 +2465,11 @@
           renderRail();
         })
         .catch(function (err) {
-          document.getElementById('feed').innerHTML =
-            '<div class="empty">Couldn\'t load interviews: ' + escapeHtml(err.message || err) +
-            '<br><span style="cursor:pointer;text-decoration:underline;font-weight:800;" onclick="loadList()">Tap to retry</span></div>';
+          renderErrorWithRetry(
+            document.getElementById('feed'),
+            'Couldn\'t load interviews: ' + escapeHtml(err.message || err),
+            loadList
+          );
         });
     }
 
@@ -2640,9 +2634,11 @@
       api('post', { id: id })
         .then(renderPost)
         .catch(function (err) {
-          document.getElementById('content').innerHTML =
-            '<div class="empty">Couldn\'t load interview: ' + escapeHtml(err.message || err) +
-            '<br><span style="cursor:pointer;text-decoration:underline;font-weight:800;" onclick="loadPost(currentInterviewId)">Tap to retry</span></div>';
+          renderErrorWithRetry(
+            document.getElementById('content'),
+            'Couldn\'t load interview: ' + escapeHtml(err.message || err),
+            function () { loadPost(id); }
+          );
         });
     }
 
