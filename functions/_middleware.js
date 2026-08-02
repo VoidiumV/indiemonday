@@ -33,7 +33,7 @@
  *    (a plain browser visit won't show you the bot-only behavior).
  */
 
-var API_BASE_URL = 'https://script.google.com/macros/s/AKfycbyT0DwiBd2QsZ_R22-L2lHySEjcMnRWS9VeGEaRzOjGCiuKKQq9FCwCNHuRPLRVYirG/exec';
+var API_BASE_URL = 'https://script.google.com/macros/s/AKfycbwEWKb7ubfbIIHLb_OPfPurVXhnrfYsg5CknFolKLVZUuYitYuLR4iOp2lKJNajqSeL/exec';
 
 var BOT_UA_PATTERN = /(facebookexternalhit|twitterbot|slackbot|discordbot|linkedinbot|whatsapp|telegrambot|pinterest|redditbot|skypeuripreview|vkshare|w3c_validator|embedly|quora link preview|outbrain|nuzzel|flipboard|tumblr|bitlybot|iframely)/i;
 
