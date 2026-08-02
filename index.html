@@ -1239,9 +1239,6 @@
       </div>
 
       <div class="social-bar" id="social-bar" style="margin-top:28px"></div>
-      <div style="text-align:center; margin-top:6px;">
-        <a href="#" id="rss-link" target="_blank" rel="noopener" style="font-size:12px; font-weight:800; color:var(--ink-soft); text-decoration:underline; text-underline-offset:2px;">Subscribe via RSS</a>
-      </div>
     </div>
   </div>
 
@@ -1291,22 +1288,6 @@
       </div>
       <div id="team-content">
         <div class="loading">Loading team members&hellip;</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ARCHIVE VIEW -->
-  <div id="view-archive" style="display:none">
-    <div class="page-wrap">
-      <div class="back-row" style="padding-left:0; margin-bottom: 20px;">
-        <span class="back-link" onclick="showHomeView()">&larr; Back to Home</span>
-      </div>
-      <div class="page-header">
-        <h1 class="display" style="font-size:38px; margin:0 0 6px;">Archive</h1>
-        <p style="color:var(--ink-soft); font-weight:600; margin:0;">Jump straight to any issue.</p>
-      </div>
-      <div id="archive-content">
-        <div class="loading">Loading archive&hellip;</div>
       </div>
     </div>
   </div>
@@ -1429,6 +1410,21 @@
     // ================================================================
     var API_BASE_URL = 'https://script.google.com/macros/s/AKfycbx6XCkuzKen74IvzJSvsmzRBTmPqhV53oC_9EuvDsML2-Fszb9rLVThLneSANlaA4OR/exec';
 
+    // Warm up the connection to the Apps Script domain immediately, before
+    // the first real request fires — shaves off DNS/TLS handshake time.
+    (function preconnectApi() {
+      try {
+        var origin = new URL(API_BASE_URL).origin;
+        ['preconnect', 'dns-prefetch'].forEach(function (rel) {
+          var link = document.createElement('link');
+          link.rel = rel;
+          link.href = origin;
+          if (rel === 'preconnect') link.crossOrigin = 'anonymous';
+          document.head.appendChild(link);
+        });
+      } catch (e) { /* placeholder URL not yet replaced — nothing to preconnect to */ }
+    })();
+
     var listLoaded = false;
     var teamLoaded = false;
     var songsLoaded = false;
@@ -1460,12 +1456,8 @@
     var API_TIMEOUT_MS = 20000;
     var inFlightRequests = {};
 
-    function api(action, params) {
-      params = params || {};
-      var cacheKey = action + '::' + JSON.stringify(params);
-      if (inFlightRequests[cacheKey]) return inFlightRequests[cacheKey];
-
-      var promise = new Promise(function (resolve, reject) {
+    function apiOnce(action, params) {
+      return new Promise(function (resolve, reject) {
         var cbName = '_im_cb_' + (jsonpCounter++) + '_' + Date.now();
         var script = document.createElement('script');
         var settled = false;
@@ -1509,6 +1501,19 @@
 
         script.src = url;
         document.body.appendChild(script);
+      });
+    }
+
+    // Apps Script's first hit after idling is often the slow/flaky one (cold
+    // start). Rather than surface that as a failure and make the person tap
+    // "retry" themselves, try once more automatically before giving up.
+    function api(action, params) {
+      params = params || {};
+      var cacheKey = action + '::' + JSON.stringify(params);
+      if (inFlightRequests[cacheKey]) return inFlightRequests[cacheKey];
+
+      var promise = apiOnce(action, params).catch(function () {
+        return apiOnce(action, params);
       });
 
       inFlightRequests[cacheKey] = promise;
@@ -1647,7 +1652,6 @@
       if (path === 'songs') { showSongsView(); return; }
       if (path === 'albums') { showAlbumsView(); return; }
       if (path === 'artists') { showArtistsView(); return; }
-      if (path === 'archive') { showArchiveView(); return; }
       if (path === 'changelog') { showChangelogView(); return; }
       showHomeView();
     }
@@ -1662,7 +1666,6 @@
       document.getElementById('view-songs').style.display = 'none';
       document.getElementById('view-albums').style.display = 'none';
       document.getElementById('view-artists').style.display = 'none';
-      document.getElementById('view-archive').style.display = 'none';
       document.getElementById('view-changelog').style.display = 'none';
       document.getElementById('view-weekly-list').style.display = 'none';
       document.getElementById('view-weekly-post').style.display = 'none';
@@ -1734,68 +1737,6 @@
       if (!artistsLoaded) loadArtists();
     }
 
-    function showArchiveView() {
-      hideAllViews();
-      document.getElementById('topbar-subtitle').textContent = 'Archive';
-      document.getElementById('crumb-back').style.display = '';
-      document.getElementById('view-archive').style.display = '';
-      setPath('archive');
-      if (listLoaded) {
-        renderArchiveGrid(allPosts);
-      } else {
-        document.getElementById('archive-content').innerHTML = '<div class="loading">Loading archive&hellip;</div>';
-        api('posts').then(function (list) {
-          listLoaded = true;
-          allPosts = list || [];
-          renderArchiveGrid(allPosts);
-          renderRail();
-        }).catch(function (err) {
-          document.getElementById('archive-content').innerHTML =
-            '<div class="empty">Couldn\'t load archive: ' + escapeHtml(err.message || err) +
-            '<br><span style="cursor:pointer;text-decoration:underline;font-weight:800;" onclick="showArchiveView()">Tap to retry</span></div>';
-        });
-      }
-    }
-
-    function renderArchiveGrid(posts) {
-      var container = document.getElementById('archive-content');
-      var validPosts = (posts || []).filter(function (item) { return !isNA(item.artist); });
-
-      if (!validPosts.length) {
-        container.innerHTML = '<div class="empty">No issues yet.</div>';
-        return;
-      }
-
-      var sorted = validPosts.slice().sort(function (a, b) {
-        var an = parseInt(String(a.issueNum).replace(/[^0-9]/g, ''), 10);
-        var bn = parseInt(String(b.issueNum).replace(/[^0-9]/g, ''), 10);
-        if (isNaN(an)) an = -1;
-        if (isNaN(bn)) bn = -1;
-        return bn - an;
-      });
-
-      container.innerHTML = '<div class="archive-grid">' +
-        sorted.map(function (item) {
-          var parsed = parseArtistMeta(item.artist);
-          var lockedClass = item.isLocked ? ' locked' : '';
-          var num = item.issueNum ? String(item.issueNum).replace(/[^0-9]/g, '') : '?';
-          return (
-            '<div class="archive-chip' + lockedClass + '" data-id="' + escapeHtml(item.id) + '" data-locked="' + item.isLocked + '">' +
-              '<div class="archive-num display">#' + escapeHtml(num) + '</div>' +
-              '<div class="archive-sub">' + escapeHtml(parsed.name) + '</div>' +
-            '</div>'
-          );
-        }).join('') +
-      '</div>';
-
-      container.querySelectorAll('.archive-chip').forEach(function (chip) {
-        chip.addEventListener('click', function () {
-          if (chip.getAttribute('data-locked') === 'true') return;
-          showPostView(chip.getAttribute('data-id'));
-        });
-      });
-    }
-
     function showChangelogView() {
       hideAllViews();
       document.getElementById('topbar-subtitle').textContent = 'Changelog';
@@ -1838,7 +1779,6 @@
     document.getElementById('tile-songs').addEventListener('click', showSongsView);
     document.getElementById('tile-albums').addEventListener('click', showAlbumsView);
     document.getElementById('tile-artists').addEventListener('click', showArtistsView);
-    document.getElementById('tile-archive').addEventListener('click', showArchiveView);
     document.getElementById('changelog-btn').addEventListener('click', showChangelogView);
 
     // ---------- THEME TOGGLE ----------
@@ -2641,10 +2581,6 @@
     })();
 
     // ---------- INITIALIZATION ----------
-    var rssLinkEl = document.getElementById('rss-link');
-    if (rssLinkEl) {
-      rssLinkEl.href = API_BASE_URL + (API_BASE_URL.indexOf('?') === -1 ? '?' : '&') + 'action=rss';
-    }
     loadSettings();
     routeFromPath();
   </script>
