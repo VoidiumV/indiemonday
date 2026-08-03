@@ -334,6 +334,38 @@
     }
     .theme-toggle-btn:hover { opacity: 1; border-color: #fff; }
 
+    .staff-icon-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: transparent;
+      border: 2px solid rgba(255,255,255,0.4);
+      color: #fff;
+      cursor: pointer;
+      user-select: none;
+      opacity: 0.85;
+      transition: opacity 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+      flex-shrink: 0;
+    }
+    .staff-icon-btn:hover { opacity: 1; border-color: #fff; }
+    .staff-icon-btn svg {
+      width: 17px;
+      height: 17px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .staff-icon-btn.is-logged-in {
+      background: rgba(255,255,255,0.2);
+      border-color: #fff;
+      opacity: 1;
+    }
+
     /* ---------- home view ---------- */
     .home-wrap {
       max-width: 680px;
@@ -1263,7 +1295,9 @@
       </div>
       <div class="topbar-right">
         <span class="changelog-btn" id="changelog-btn">Changelog</span>
-        <span class="changelog-btn" id="staff-btn" title="Staff login">🔒 Staff</span>
+        <span class="staff-icon-btn" id="staff-btn" title="Staff login" aria-label="Staff login">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"></circle><path d="M4 20c0-4.4 3.6-7 8-7s8 2.6 8 7"></path></svg>
+        </span>
         <span class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode">🌙</span>
         <div class="dotgrid">
           <div></div><div></div><div></div><div></div>
@@ -1529,7 +1563,7 @@
     // ================================================================
     // CONFIG
     // ================================================================
-    var API_BASE_URL = 'https://script.google.com/macros/s/AKfycbw2mjydXRdhyle_x3xhR9PFlbxZ02Z2uRG5gzVCxt8Yx9zL8d2cibg5HMX5QjOUf4MI/exec';
+    var API_BASE_URL = 'https://script.google.com/macros/s/AKfycbz3oiqohPWb4GTpZwrrpF1DUPhMwSPz4GnauqleECGcEOZSnBlcCtxG_k38RV5EsLA7/exec';
 
     (function preconnectApi() {
       try {
@@ -1954,7 +1988,7 @@
       isStaffLoggedIn = !!(token && currentHash && token === currentHash);
       if (!isStaffLoggedIn) { try { localStorage.removeItem(STAFF_TOKEN_KEY); } catch (e) {} }
       var btn = document.getElementById('staff-btn');
-      if (btn) btn.textContent = isStaffLoggedIn ? '🔓 Staff' : '🔒 Staff';
+      if (btn) btn.classList.toggle('is-logged-in', isStaffLoggedIn);
     }
 
     function refreshViewCountDependentViews() {
@@ -1991,7 +2025,7 @@
           if (result && result.ok) {
             try { localStorage.setItem(STAFF_TOKEN_KEY, result.token); } catch (e) {}
             isStaffLoggedIn = true;
-            document.getElementById('staff-btn').textContent = '🔓 Staff';
+            document.getElementById('staff-btn').classList.add('is-logged-in');
             refreshViewCountDependentViews();
             showStaffPanelView();
           } else {
@@ -2083,7 +2117,7 @@
     document.getElementById('staff-logout-btn').addEventListener('click', function () {
       try { localStorage.removeItem(STAFF_TOKEN_KEY); } catch (e) {}
       isStaffLoggedIn = false;
-      document.getElementById('staff-btn').textContent = '🔒 Staff';
+      document.getElementById('staff-btn').classList.remove('is-logged-in');
       refreshViewCountDependentViews();
       showHomeView();
     });
