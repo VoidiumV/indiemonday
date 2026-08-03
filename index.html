@@ -334,36 +334,52 @@
     }
     .theme-toggle-btn:hover { opacity: 1; border-color: #fff; }
 
-    .staff-icon-btn {
-      display: inline-flex;
+    /* ---------- staff login floating action button (home page only) ---------- */
+    .staff-fab {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 400;
+      display: none;
       align-items: center;
       justify-content: center;
-      width: 34px;
-      height: 34px;
+      width: 46px;
+      height: 46px;
       border-radius: 50%;
-      background: transparent;
-      border: 2px solid rgba(255,255,255,0.4);
-      color: #fff;
+      background: var(--paper);
+      border: 2px solid var(--ink);
+      color: var(--ink);
       cursor: pointer;
       user-select: none;
-      opacity: 0.85;
-      transition: opacity 0.12s ease, border-color 0.12s ease, background 0.12s ease;
-      flex-shrink: 0;
+      box-shadow: 3px 3px 0 rgba(13,13,13,0.24);
+      transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease, color 0.12s ease;
     }
-    .staff-icon-btn:hover { opacity: 1; border-color: #fff; }
-    .staff-icon-btn svg {
-      width: 17px;
-      height: 17px;
+    .staff-fab:hover {
+      transform: translate(-2px, -2px);
+      box-shadow: 5px 5px 0 rgba(13,13,13,0.24);
+    }
+    .staff-fab svg {
+      width: 19px;
+      height: 19px;
       fill: none;
       stroke: currentColor;
       stroke-width: 2;
       stroke-linecap: round;
       stroke-linejoin: round;
     }
-    .staff-icon-btn.is-logged-in {
-      background: rgba(255,255,255,0.2);
-      border-color: #fff;
-      opacity: 1;
+    .staff-fab.is-logged-in {
+      background: var(--ink);
+      color: var(--sky);
+      border-color: var(--ink);
+    }
+
+    @media (max-width: 620px) {
+      .staff-fab {
+        width: 50px;
+        height: 50px;
+        bottom: 18px;
+        right: 18px;
+      }
     }
 
     /* ---------- home view ---------- */
@@ -537,6 +553,17 @@
     .card.locked:hover {
       transform: none;
       box-shadow: 5px 5px 0 rgba(13,13,13,0.18);
+    }
+
+    /* Cards with a custom (sheet-picked) background color always keep
+       black text, since those colors are usually light/pastel and were
+       never designed to be paired with the dark-mode white text color. */
+    .card.has-custom-color .card-num,
+    .card.has-custom-color .post-title,
+    .card.has-custom-color .meta-line,
+    .card.has-custom-color .meta-line b,
+    .card.has-custom-color .date-tag {
+      color: #0d0d0d !important;
     }
 
     .avatar {
@@ -1295,9 +1322,6 @@
       </div>
       <div class="topbar-right">
         <span class="changelog-btn" id="changelog-btn">Changelog</span>
-        <span class="staff-icon-btn" id="staff-btn" title="Staff login" aria-label="Staff login">
-          <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"></circle><path d="M4 20c0-4.4 3.6-7 8-7s8 2.6 8 7"></path></svg>
-        </span>
         <span class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode">🌙</span>
         <div class="dotgrid">
           <div></div><div></div><div></div><div></div>
@@ -1305,6 +1329,11 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- STAFF LOGIN FAB (shown on home page only) -->
+  <div class="staff-fab" id="staff-fab" title="Staff login" aria-label="Staff login">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"></circle><path d="M4 20c0-4.4 3.6-7 8-7s8 2.6 8 7"></path></svg>
   </div>
 
   <!-- HOME VIEW -->
@@ -1563,7 +1592,7 @@
     // ================================================================
     // CONFIG
     // ================================================================
-    var API_BASE_URL = 'https://script.google.com/macros/s/AKfycbz3oiqohPWb4GTpZwrrpF1DUPhMwSPz4GnauqleECGcEOZSnBlcCtxG_k38RV5EsLA7/exec';
+    var API_BASE_URL = 'https://script.google.com/macros/s/AKfycbwVW-v6Kvq-PPN9zr7sYESMzcm_Fzl8nb_Wg_QPwsofK2sPUwH4p1Vo9HLuKbG6PguA/exec';
 
     (function preconnectApi() {
       try {
@@ -1904,6 +1933,9 @@
       document.getElementById('view-weekly-list').style.display = 'none';
       document.getElementById('view-weekly-post').style.display = 'none';
       document.getElementById('app-shell').style.display = 'none';
+      // Staff FAB only ever shows on the home page — hide it by default
+      // on every navigation, and showHomeView() will turn it back on.
+      document.getElementById('staff-fab').style.display = 'none';
     }
 
     function showHomeView() {
@@ -1911,6 +1943,7 @@
       document.getElementById('topbar-subtitle').textContent = 'Highlighting Independent Artists';
       document.getElementById('crumb-back').style.display = 'none';
       document.getElementById('view-home').style.display = '';
+      document.getElementById('staff-fab').style.display = 'flex';
       setPath('');
     }
 
@@ -1987,8 +2020,8 @@
       var currentHash = siteSettings.staffAuthHash || '';
       isStaffLoggedIn = !!(token && currentHash && token === currentHash);
       if (!isStaffLoggedIn) { try { localStorage.removeItem(STAFF_TOKEN_KEY); } catch (e) {} }
-      var btn = document.getElementById('staff-btn');
-      if (btn) btn.classList.toggle('is-logged-in', isStaffLoggedIn);
+      var fab = document.getElementById('staff-fab');
+      if (fab) fab.classList.toggle('is-logged-in', isStaffLoggedIn);
     }
 
     function refreshViewCountDependentViews() {
@@ -2025,7 +2058,7 @@
           if (result && result.ok) {
             try { localStorage.setItem(STAFF_TOKEN_KEY, result.token); } catch (e) {}
             isStaffLoggedIn = true;
-            document.getElementById('staff-btn').classList.add('is-logged-in');
+            document.getElementById('staff-fab').classList.add('is-logged-in');
             refreshViewCountDependentViews();
             showStaffPanelView();
           } else {
@@ -2099,7 +2132,7 @@
     document.getElementById('tile-artists').addEventListener('click', showArtistsView);
     document.getElementById('changelog-btn').addEventListener('click', showChangelogView);
 
-    document.getElementById('staff-btn').addEventListener('click', function () {
+    document.getElementById('staff-fab').addEventListener('click', function () {
       if (isStaffLoggedIn) showStaffPanelView(); else showStaffLoginView();
     });
     document.getElementById('staff-login-back').addEventListener('click', function () {
@@ -2117,7 +2150,7 @@
     document.getElementById('staff-logout-btn').addEventListener('click', function () {
       try { localStorage.removeItem(STAFF_TOKEN_KEY); } catch (e) {}
       isStaffLoggedIn = false;
-      document.getElementById('staff-btn').classList.remove('is-logged-in');
+      document.getElementById('staff-fab').classList.remove('is-logged-in');
       refreshViewCountDependentViews();
       showHomeView();
     });
@@ -2640,6 +2673,10 @@
       feed.innerHTML = visiblePosts.map(function (item) {
         var img = item.image ? escapeHtml(item.image) : fallback;
         var avatarStyle = item.cardColor ? ' style="background:' + escapeHtml(item.cardColor) + '"' : '';
+        // Cards with a sheet-picked background color always keep black
+        // text (see .card.has-custom-color rule) since those colors are
+        // usually light/pastel and clash with dark-mode's white text.
+        var customColorClass = item.cardColor ? ' has-custom-color' : '';
 
         var parsed = parseArtistMeta(item.artist);
 
@@ -2655,7 +2692,7 @@
         var lockedClass = item.isLocked ? ' locked' : '';
 
         return (
-          '<div class="card' + lockedClass + '" data-id="' + escapeHtml(item.id) + '" data-locked="' + item.isLocked + '"' + avatarStyle + '>' +
+          '<div class="card' + lockedClass + customColorClass + '" data-id="' + escapeHtml(item.id) + '" data-locked="' + item.isLocked + '"' + avatarStyle + '>' +
             '<img class="avatar" src="' + img + '" loading="lazy" onerror="this.src=\'' + fallback + '\'">' +
             '<div class="card-text">' +
               '<div class="card-num">' + escapeHtml(issueNumStr(item.issueNum)) + '</div>' +
