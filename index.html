@@ -12,21 +12,14 @@
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="Indie Monday">
   <meta name="twitter:description" content="Your #1 source for all indie music. New posts every monday.">
-  <!-- Note: per-page (interview/weekly-post) title, description, and image
-       are injected server-side for social crawlers by functions/_middleware.js
-       — see that file for setup instructions. -->
   <script>
-    // Runs before CSS paints so the saved theme applies immediately —
-    // no flash of the wrong theme on load. Persists across visits via
-    // localStorage (this is a real deployed site, not a Claude artifact,
-    // so localStorage is fine here).
     (function () {
       try {
         var saved = localStorage.getItem('im_theme');
         if (saved === 'dark') {
           document.documentElement.setAttribute('data-theme', 'dark');
         }
-      } catch (e) { /* localStorage unavailable — just default to light */ }
+      } catch (e) { }
     })();
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -34,26 +27,18 @@
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Manrope:wght@500;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
-      /* brand light palette */
       --sky: #ffffff;
       --sky-soft: #ffffff;
       --sky-deep: #000000;
-      /* neutrals */
       --ink: #0d0d0d;
       --ink-soft: rgba(13,13,13,0.62);
-      /* paper */
       --paper: #ffffff;
       --paper-soft: #000000;
-      /* dots */
       --dot-on-dark: #ffffff;
       --dot-on-light: #000000;
       --dot-pattern: rgba(13,13,13,0.08);
-      /* body copy inside articles */
       --content-text: #2a2523;
-      /* default idle background for pill/stream buttons */
       --btn-bg: #ffffff;
-      /* always-dark brand surfaces (topbar, feature tile, form plaque) — stay
-         the same in both themes so the brand accent doesn't disappear */
       --brand-dark: #0d0d0d;
     }
 
@@ -504,11 +489,13 @@
       transition: transform 0.12s ease, box-shadow 0.12s ease;
       box-shadow: 5px 5px 0 rgba(13,13,13,0.18);
       overflow: hidden;
+      color: var(--ink);
     }
 
     .card:hover {
       transform: translate(-3px, -3px);
       box-shadow: 8px 8px 0 rgba(13,13,13,0.24);
+      color: var(--ink);
     }
 
     .card.locked {
@@ -542,7 +529,7 @@
     .card-num {
       font-size: 11px;
       font-weight: 800;
-      color: var(--sky-deep);
+      color: var(--ink-soft);
       letter-spacing: 1px;
       margin-bottom: 4px;
     }
@@ -558,6 +545,7 @@
     .post-title {
       font-size: 22px;
       margin: 0;
+      color: var(--ink);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -571,8 +559,8 @@
       font-size: 10px;
       font-weight: 800;
       letter-spacing: 0.5px;
-      background: var(--ink);
-      color: var(--sky);
+      background: #0d0d0d;
+      color: #ffffff;
       padding: 2px 7px;
       border-radius: 4px;
       text-transform: uppercase;
@@ -664,9 +652,6 @@
       display: block;
     }
 
-    /* Fixed square crop (used by Artist of the Week) instead of stretching
-       to match the card's text height — keeps every artist photo cropped
-       consistently regardless of how much text sits next to it. */
     .feature-card-art.fixed-crop {
       height: 150px;
       align-self: flex-start;
@@ -725,6 +710,8 @@
     .stream-btn.spotify { background: #1DB954; color: #fff; }
     .stream-btn.apple { background: #E86899; color: #fff; }
     .stream-btn.youtube { background: #FF0000; color: #fff; }
+    .stream-btn.soundcloud { background: #FF5500; color: #fff; }
+    .stream-btn.bandcamp { background: #629AA9; color: #fff; }
 
     /* ---------- hero & article content ---------- */
     .hero {
@@ -1238,8 +1225,6 @@
       .feature-card-art { width: 100%; height: 220px; border-right: none; border-bottom: 3px solid var(--ink); }
       .stream-links { justify-content: center; }
 
-      /* ---- tap-target fixes: small text links were too small to tap reliably,
-         big tiles felt oversized for a thumb — this rebalances both ---- */
       .crumb-back, .back-link {
         display: inline-block;
         padding: 10px 2px;
@@ -1278,6 +1263,7 @@
       </div>
       <div class="topbar-right">
         <span class="changelog-btn" id="changelog-btn">Changelog</span>
+        <span class="changelog-btn" id="staff-btn" title="Staff login">🔒 Staff</span>
         <span class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle dark mode">🌙</span>
         <div class="dotgrid">
           <div></div><div></div><div></div><div></div>
@@ -1456,6 +1442,50 @@
     </div>
   </div>
 
+  <!-- STAFF LOGIN VIEW -->
+  <div id="view-staff-login" style="display:none">
+    <div class="page-wrap" style="max-width:420px;">
+      <div class="back-row" style="padding-left:0; margin-bottom: 20px;">
+        <span class="back-link" id="staff-login-back">&larr; Back</span>
+      </div>
+      <div class="page-header">
+        <h1 class="display" style="font-size:32px; margin:0 0 6px;">Staff Login</h1>
+        <p style="color:var(--ink-soft); font-weight:600; margin:0;">Enter the staff password to continue.</p>
+      </div>
+      <div style="margin-top:24px;">
+        <input type="password" class="search-box" id="staff-password-input" placeholder="Password" autocomplete="current-password">
+        <div id="staff-login-error" style="color:#d9695f; font-size:13px; font-weight:700; margin-top:10px; display:none;"></div>
+        <button type="button" class="load-more-btn" id="staff-login-submit" style="margin-top:16px; width:100%; justify-content:center;">Log In</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STAFF PANEL VIEW -->
+  <div id="view-staff-panel" style="display:none">
+    <div class="page-wrap">
+      <div class="back-row" style="padding-left:0; margin-bottom: 20px;">
+        <span class="back-link" onclick="showHomeView()">&larr; Back to Home</span>
+        <button type="button" class="copy-link-btn" id="staff-logout-btn">Log Out</button>
+      </div>
+      <div class="page-header">
+        <h1 class="display" style="font-size:38px; margin:0 0 6px;">Staff Panel</h1>
+        <p style="color:var(--ink-soft); font-weight:600; margin:0;">You have access to view counts and the interview schedule.</p>
+      </div>
+
+      <div style="margin:22px 0;">
+        <label style="display:flex; align-items:center; gap:8px; font-weight:700; font-size:14px; cursor:pointer;">
+          <input type="checkbox" id="staff-hide-views-toggle" style="width:auto;">
+          Hide view counts from me
+        </label>
+      </div>
+
+      <p style="margin:0 0 10px; font-size:13px; font-weight:700; color:var(--ink-soft);">Interview Schedule</p>
+      <div id="staff-schedule-wrap">
+        <div class="loading">Loading interview schedule&hellip;</div>
+      </div>
+    </div>
+  </div>
+
   <!-- INTERVIEWS SHELL (LIST + DETAIL) -->
   <div class="shell" id="app-shell" style="display:none">
     <div class="rail" id="rail-left"></div>
@@ -1497,12 +1527,10 @@
 
   <script>
     // ================================================================
-    // CONFIG — point this at your deployed Apps Script Web App /exec URL
+    // CONFIG
     // ================================================================
-    var API_BASE_URL = 'https://script.google.com/macros/s/AKfycbxTjmM2h6bGR1puzKzeZ-6DF8I8C2foeKBlaUUDZ3VFrVROUCgDomPq2SJHFQy-oy1i/exec';
+    var API_BASE_URL = 'https://script.google.com/macros/s/AKfycbw2mjydXRdhyle_x3xhR9PFlbxZ02Z2uRG5gzVCxt8Yx9zL8d2cibg5HMX5QjOUf4MI/exec';
 
-    // Warm up the connection to the Apps Script domain immediately, before
-    // the first real request fires — shaves off DNS/TLS handshake time.
     (function preconnectApi() {
       try {
         var origin = new URL(API_BASE_URL).origin;
@@ -1513,7 +1541,7 @@
           if (rel === 'preconnect') link.crossOrigin = 'anonymous';
           document.head.appendChild(link);
         });
-      } catch (e) { /* placeholder URL not yet replaced — nothing to preconnect to */ }
+      } catch (e) { }
     })();
 
     var listLoaded = false;
@@ -1534,14 +1562,23 @@
     var currentInterviewId = null;
     var currentWeeklyId = null;
 
+    // ---------- STAFF LOGIN STATE ----------
+    var STAFF_TOKEN_KEY = 'im_staff_token';
+    var STAFF_HIDE_VIEWS_KEY = 'im_staff_hide_views';
+    var isStaffLoggedIn = false;
+    var staffHideViewCounts = false;
+    try { staffHideViewCounts = localStorage.getItem(STAFF_HIDE_VIEWS_KEY) === '1'; } catch (e) {}
+
+    function shouldShowViewCount() {
+      if (isStaffLoggedIn) return !staffHideViewCounts;
+      return !!siteSettings.showViewCount;
+    }
+
     // ---------- PAGINATION ("Load More") ----------
     var PAGE_SIZE = 12;
     var paginationState = {
       interviews: PAGE_SIZE,
-      weekly: PAGE_SIZE,
-      songs: PAGE_SIZE,
-      albums: PAGE_SIZE,
-      artists: PAGE_SIZE
+      weekly: PAGE_SIZE
     };
 
     function renderLoadMoreHtml(remaining) {
@@ -1557,14 +1594,6 @@
     }
 
     // ---------- JSONP API CLIENT (avoids CORS issues talking to Apps Script) ----------
-    // Two reliability fixes here:
-    //  1) De-duping: if the same action+params is already in flight, reuse that
-    //     promise instead of firing a second identical request. Browsers cap
-    //     concurrent connections per host, so a slow request (e.g. a doc-heavy
-    //     interview load) can otherwise queue up duplicate calls behind it.
-    //  2) Timeout: a request can no longer hang forever. If Apps Script doesn't
-    //     respond within API_TIMEOUT_MS, the call fails so the UI can show an
-    //     error + retry instead of spinning indefinitely.
     var jsonpCounter = 0;
     var API_TIMEOUT_MS = 20000;
     var inFlightRequests = {};
@@ -1617,9 +1646,6 @@
       });
     }
 
-    // Apps Script's first hit after idling is often the slow/flaky one (cold
-    // start). Rather than surface that as a failure and make the person tap
-    // "retry" themselves, try once more automatically before giving up.
     function api(action, params) {
       params = params || {};
       var cacheKey = action + '::' + JSON.stringify(params);
@@ -1657,11 +1683,6 @@
     }
 
     // ---------- ERROR + RETRY RENDERING ----------
-    // Renders an error message with a "Tap to retry" control inside the given
-    // container. Wired up with addEventListener (rather than an inline
-    // onclick="..." string) so it can't silently fail to bind, and gives
-    // immediate visual feedback ("Retrying…" + disabled) so it's obvious the
-    // tap registered even while the retry request is still in flight.
     function renderErrorWithRetry(container, message, retryFn) {
       if (!container) return;
       container.innerHTML =
@@ -1724,13 +1745,10 @@
       return { name: cleanName, hasAudio: hasAudio, isDouble: isDouble };
     }
 
-    // Embed formatting logic — all three (Spotify, Apple, YouTube) accept a plain
-    // share link pasted straight from the app; no need to hand-craft embed codes.
     function getSpotifyEmbedUrl(url) {
       if (!url) return null;
       var str = String(url).trim();
       if (str.indexOf('spotify.com/embed') !== -1) return str;
-      // tolerate optional locale segments like /intl-en/ before the type/id
       var match = str.match(/open\.spotify\.com\/(?:[a-zA-Z-]+\/)?(track|album|artist|playlist|episode|show)\/([a-zA-Z0-9]+)/);
       return match ? 'https://open.spotify.com/embed/' + match[1] + '/' + match[2] : str;
     }
@@ -1776,6 +1794,12 @@
       }
       if (item.youtube) {
         btns.push('<a href="' + escapeHtml(item.youtube) + '" target="_blank" rel="noopener" class="stream-btn youtube">YouTube</a>');
+      }
+      if (item.soundcloud) {
+        btns.push('<a href="' + escapeHtml(item.soundcloud) + '" target="_blank" rel="noopener" class="stream-btn soundcloud">SoundCloud</a>');
+      }
+      if (item.bandcamp) {
+        btns.push('<a href="' + escapeHtml(item.bandcamp) + '" target="_blank" rel="noopener" class="stream-btn bandcamp">Bandcamp</a>');
       }
       return btns.length ? '<div class="stream-links">' + btns.join('') + '</div>' : '';
     }
@@ -1825,6 +1849,8 @@
       if (path === 'albums') { showAlbumsView(); return; }
       if (path === 'artists') { showArtistsView(); return; }
       if (path === 'changelog') { showChangelogView(); return; }
+      if (path === 'staff-login') { showStaffLoginView(); return; }
+      if (path === 'staff') { showStaffPanelView(); return; }
       showHomeView();
     }
 
@@ -1839,6 +1865,8 @@
       document.getElementById('view-albums').style.display = 'none';
       document.getElementById('view-artists').style.display = 'none';
       document.getElementById('view-changelog').style.display = 'none';
+      document.getElementById('view-staff-login').style.display = 'none';
+      document.getElementById('view-staff-panel').style.display = 'none';
       document.getElementById('view-weekly-list').style.display = 'none';
       document.getElementById('view-weekly-post').style.display = 'none';
       document.getElementById('app-shell').style.display = 'none';
@@ -1918,6 +1946,90 @@
       if (!changelogLoaded) loadChangelog();
     }
 
+    // ---------- STAFF LOGIN / PANEL ----------
+    function refreshStaffLoginState() {
+      var token = null;
+      try { token = localStorage.getItem(STAFF_TOKEN_KEY); } catch (e) {}
+      var currentHash = siteSettings.staffAuthHash || '';
+      isStaffLoggedIn = !!(token && currentHash && token === currentHash);
+      if (!isStaffLoggedIn) { try { localStorage.removeItem(STAFF_TOKEN_KEY); } catch (e) {} }
+      var btn = document.getElementById('staff-btn');
+      if (btn) btn.textContent = isStaffLoggedIn ? '🔓 Staff' : '🔒 Staff';
+    }
+
+    function refreshViewCountDependentViews() {
+      if (listLoaded) renderList(allPosts);
+      if (weeklyPostsLoaded) renderWeeklyPostsList(allWeeklyPosts);
+    }
+
+    function showStaffLoginView() {
+      hideAllViews();
+      document.getElementById('topbar-subtitle').textContent = 'Staff Login';
+      document.getElementById('crumb-back').style.display = '';
+      document.getElementById('view-staff-login').style.display = '';
+      document.getElementById('staff-password-input').value = '';
+      document.getElementById('staff-login-error').style.display = 'none';
+      setPath('staff-login');
+      setTimeout(function () {
+        var input = document.getElementById('staff-password-input');
+        if (input) input.focus();
+      }, 50);
+    }
+
+    function attemptStaffLogin() {
+      var input = document.getElementById('staff-password-input');
+      var errorEl = document.getElementById('staff-login-error');
+      var submitBtn = document.getElementById('staff-login-submit');
+      errorEl.style.display = 'none';
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Checking\u2026';
+
+      api('staffLogin', { password: input.value })
+        .then(function (result) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Log In';
+          if (result && result.ok) {
+            try { localStorage.setItem(STAFF_TOKEN_KEY, result.token); } catch (e) {}
+            isStaffLoggedIn = true;
+            document.getElementById('staff-btn').textContent = '🔓 Staff';
+            refreshViewCountDependentViews();
+            showStaffPanelView();
+          } else {
+            errorEl.textContent = (result && result.error) || 'Incorrect password.';
+            errorEl.style.display = '';
+          }
+        })
+        .catch(function (err) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Log In';
+          errorEl.textContent = 'Couldn\'t reach the server: ' + escapeHtml(err.message || err);
+          errorEl.style.display = '';
+        });
+    }
+
+    function showStaffPanelView() {
+      if (!isStaffLoggedIn) { showStaffLoginView(); return; }
+      hideAllViews();
+      document.getElementById('topbar-subtitle').textContent = 'Staff Panel';
+      document.getElementById('crumb-back').style.display = '';
+      document.getElementById('view-staff-panel').style.display = '';
+      setPath('staff');
+      document.getElementById('staff-hide-views-toggle').checked = staffHideViewCounts;
+      loadStaffSchedule();
+    }
+
+    function loadStaffSchedule() {
+      var wrap = document.getElementById('staff-schedule-wrap');
+      var url = siteSettings.staffScheduleUrl;
+      if (!url) {
+        wrap.innerHTML = '<div class="empty">No schedule URL configured yet &mdash; add a "Staff Schedule URL" row to the Settings sheet.</div>';
+        return;
+      }
+      wrap.innerHTML =
+        '<iframe src="' + escapeHtml(url) + '" style="width:100%; min-height:900px; border:3px solid var(--ink); background:#fff;" loading="lazy"></iframe>' +
+        '<p style="margin-top:10px;"><a href="' + escapeHtml(url) + '" target="_blank" rel="noopener" style="font-size:12px; font-weight:800;">Open in a new tab &#8599;</a></p>';
+    }
+
     function showListView() {
       hideAllViews();
       document.getElementById('topbar-subtitle').textContent = 'Interviews';
@@ -1952,6 +2064,29 @@
     document.getElementById('tile-albums').addEventListener('click', showAlbumsView);
     document.getElementById('tile-artists').addEventListener('click', showArtistsView);
     document.getElementById('changelog-btn').addEventListener('click', showChangelogView);
+
+    document.getElementById('staff-btn').addEventListener('click', function () {
+      if (isStaffLoggedIn) showStaffPanelView(); else showStaffLoginView();
+    });
+    document.getElementById('staff-login-back').addEventListener('click', function () {
+      if (window.history.length > 1) window.history.back(); else showHomeView();
+    });
+    document.getElementById('staff-login-submit').addEventListener('click', attemptStaffLogin);
+    document.getElementById('staff-password-input').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') attemptStaffLogin();
+    });
+    document.getElementById('staff-hide-views-toggle').addEventListener('change', function () {
+      staffHideViewCounts = this.checked;
+      try { localStorage.setItem(STAFF_HIDE_VIEWS_KEY, staffHideViewCounts ? '1' : '0'); } catch (e) {}
+      refreshViewCountDependentViews();
+    });
+    document.getElementById('staff-logout-btn').addEventListener('click', function () {
+      try { localStorage.removeItem(STAFF_TOKEN_KEY); } catch (e) {}
+      isStaffLoggedIn = false;
+      document.getElementById('staff-btn').textContent = '🔒 Staff';
+      refreshViewCountDependentViews();
+      showHomeView();
+    });
 
     // ---------- THEME TOGGLE ----------
     function applyThemeIcon() {
@@ -2001,13 +2136,13 @@
     }, 'weekly');
     wireSearch('songs-search', function () { return allSongs; }, renderSongs, function (item) {
       return [item.title, item.artist];
-    }, 'songs');
+    });
     wireSearch('albums-search', function () { return allAlbums; }, renderAlbums, function (item) {
       return [item.title, item.artist];
-    }, 'albums');
+    });
     wireSearch('artists-search', function () { return allArtists; }, renderArtists, function (item) {
       return [item.artist];
-    }, 'artists');
+    });
     wireSearch('interviews-search', function () { return allPosts; }, renderList, function (item) {
       return [item.artist, item.interviewer, item.issueNum];
     }, 'interviews');
@@ -2036,8 +2171,12 @@
       api('settings')
         .then(function (settings) {
           siteSettings = settings || { formUrl: '', showViewCount: false, defaultImage: '', social: {} };
+          refreshStaffLoginState();
           renderRail();
           document.getElementById('social-bar').innerHTML = renderSocialBar();
+          refreshViewCountDependentViews();
+          var path = window.location.pathname.replace(/^\/+|\/+$/g, '');
+          if (path === 'staff' || path === 'staff-login') routeFromPath();
         })
         .catch(function () {
           siteSettings = { formUrl: '', showViewCount: false, defaultImage: '', social: {} };
@@ -2079,7 +2218,7 @@
       container.innerHTML = visiblePosts.map(function (item) {
         var fallback = getFallbackImage();
         var img = item.image ? escapeHtml(item.image) : fallback;
-        var viewBadge = (siteSettings.showViewCount && item.viewCount !== undefined && !item.isLocked)
+        var viewBadge = (shouldShowViewCount() && item.viewCount !== undefined && !item.isLocked)
           ? '<span class="view-count-badge">Views: ' + item.viewCount + '</span>'
           : '';
 
@@ -2146,7 +2285,7 @@
 
       var fallback = getFallbackImage();
       var img = post.image || fallback;
-      var viewMeta = (siteSettings.showViewCount && post.viewCount !== undefined)
+      var viewMeta = (shouldShowViewCount() && post.viewCount !== undefined)
         ? '<span><b>Views:</b> ' + post.viewCount + '</span>'
         : '';
 
@@ -2289,10 +2428,7 @@
         return;
       }
 
-      var shown = Math.min(paginationState.songs, validSongs.length);
-      var visibleSongs = validSongs.slice(0, shown);
-
-      container.innerHTML = visibleSongs.map(function (item) {
+      container.innerHTML = validSongs.map(function (item) {
         var img = item.cover ? escapeHtml(item.cover) : fallback;
         var issueLabel = item.issueNum ? issueNumStr(item.issueNum) + ' • ' : '';
 
@@ -2307,15 +2443,7 @@
             '</div>' +
           '</div>'
         );
-      }).join('') + renderLoadMoreHtml(validSongs.length - shown);
-
-      var loadMoreBtn = container.querySelector('.load-more-btn');
-      if (loadMoreBtn) {
-        loadMoreBtn.addEventListener('click', function () {
-          paginationState.songs += PAGE_SIZE;
-          renderSongs(songs);
-        });
-      }
+      }).join('');
     }
 
     // ---------- ALBUMS ----------
@@ -2349,10 +2477,7 @@
         return;
       }
 
-      var shown = Math.min(paginationState.albums, validAlbums.length);
-      var visibleAlbums = validAlbums.slice(0, shown);
-
-      container.innerHTML = visibleAlbums.map(function (item) {
+      container.innerHTML = validAlbums.map(function (item) {
         var img = item.cover ? escapeHtml(item.cover) : fallback;
         var issueLabel = item.issueNum ? issueNumStr(item.issueNum) + ' • ' : '';
 
@@ -2367,15 +2492,7 @@
             '</div>' +
           '</div>'
         );
-      }).join('') + renderLoadMoreHtml(validAlbums.length - shown);
-
-      var loadMoreBtn = container.querySelector('.load-more-btn');
-      if (loadMoreBtn) {
-        loadMoreBtn.addEventListener('click', function () {
-          paginationState.albums += PAGE_SIZE;
-          renderAlbums(albums);
-        });
-      }
+      }).join('');
     }
 
     // ---------- ARTISTS ----------
@@ -2409,10 +2526,7 @@
         return;
       }
 
-      var shown = Math.min(paginationState.artists, validArtists.length);
-      var visibleArtists = validArtists.slice(0, shown);
-
-      container.innerHTML = visibleArtists.map(function (item) {
+      container.innerHTML = validArtists.map(function (item) {
         var img = item.image ? escapeHtml(item.image) : fallback;
         var issueLabel = item.issueNum ? issueNumStr(item.issueNum) + ' • ' : '';
 
@@ -2426,15 +2540,7 @@
             '</div>' +
           '</div>'
         );
-      }).join('') + renderLoadMoreHtml(validArtists.length - shown);
-
-      var loadMoreBtn = container.querySelector('.load-more-btn');
-      if (loadMoreBtn) {
-        loadMoreBtn.addEventListener('click', function () {
-          paginationState.artists += PAGE_SIZE;
-          renderArtists(artists);
-        });
-      }
+      }).join('');
     }
 
     // ---------- CHANGELOG ----------
@@ -2503,7 +2609,7 @@
 
         var parsed = parseArtistMeta(item.artist);
 
-        var viewBadgeHtml = (siteSettings.showViewCount && item.viewCount !== undefined && !item.isLocked)
+        var viewBadgeHtml = (shouldShowViewCount() && item.viewCount !== undefined && !item.isLocked)
           ? '<span class="view-count-badge">Views: ' + item.viewCount + '</span>'
           : '';
 
@@ -2665,7 +2771,7 @@
       var img = post.image || fallback;
       var heroStyle = post.cardColor ? ' style="background:' + escapeHtml(post.cardColor) + '"' : '';
 
-      var viewMetaHtml = (siteSettings.showViewCount && post.viewCount !== undefined)
+      var viewMetaHtml = (shouldShowViewCount() && post.viewCount !== undefined)
         ? '<span><b>Views:</b> ' + post.viewCount + '</span>'
         : '';
 
@@ -2791,7 +2897,6 @@
 
     document.getElementById('floating-player-close').addEventListener('click', closeFloatingPlayer);
 
-    // Draggable player implementation
     (function makePlayerDraggable() {
       var player = document.getElementById('floating-player');
       var header = document.getElementById('floating-player-header');
