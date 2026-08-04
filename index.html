@@ -1533,7 +1533,7 @@
       </div>
       <div class="page-header">
         <h1 class="display" style="font-size:38px; margin:0 0 6px;">Staff Panel</h1>
-        <p style="color:var(--ink-soft); font-weight:600; margin:0;">You have access to view counts and the interview schedule.</p>
+        <p style="color:var(--ink-soft); font-weight:600; margin:0;">You have access to view counts.</p>
       </div>
 
       <div style="margin:22px 0;">
@@ -2127,7 +2127,6 @@
         hideAllViews();
         document.getElementById('topbar-subtitle').textContent = 'Staff Panel';
         document.getElementById('view-staff-panel').style.display = '';
-        document.getElementById('staff-schedule-wrap').innerHTML = '<div class="loading">Loading&hellip;</div>';
         return;
       }
       pendingStaffPanel = false;
@@ -2138,10 +2137,6 @@
       document.getElementById('view-staff-panel').style.display = '';
       setPath('staff');
       document.getElementById('staff-hide-views-toggle').checked = staffHideViewCounts;
-    }
-        .catch(function (err) {
-          renderErrorWithRetry(wrap, 'Couldn\'t load the schedule: ' + escapeHtml(err.message || err), loadStaffSchedule);
-        });
     }
 
     function showListView() {
