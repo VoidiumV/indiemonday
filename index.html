@@ -2019,16 +2019,43 @@
     }
 
     // ---------- STAFF LOGIN / PANEL ----------
-    function refreshStaffLoginState() {
+    // The old version decided login state by comparing a locally-stored
+    // value against a hash that the public /settings endpoint used to
+    // leak to every visitor — that was the bug. Now we ask the server
+    // "is this token still valid?" and it's the only source of truth.
+    var staffSessionVerified = false;
+
+    function refreshStaffLoginState(done) {
       var token = null;
       try { token = localStorage.getItem(STAFF_TOKEN_KEY); } catch (e) {}
-      var currentHash = siteSettings.staffAuthHash || '';
-      isStaffLoggedIn = !!(token && currentHash && token === currentHash);
-      if (!isStaffLoggedIn) { try { localStorage.removeItem(STAFF_TOKEN_KEY); } catch (e) {} }
+
+      if (!token) {
+        isStaffLoggedIn = false;
+        staffSessionVerified = true;
+        updateStaffFabUI();
+        if (done) done();
+        return;
+      }
+
+      api('verifySession', { token: token })
+        .then(function (res) {
+          isStaffLoggedIn = !!(res && res.ok);
+          if (!isStaffLoggedIn) { try { localStorage.removeItem(STAFF_TOKEN_KEY); } catch (e) {} }
+        })
+        .catch(function () {
+          isStaffLoggedIn = false;
+        })
+        .then(function () {
+          staffSessionVerified = true;
+          updateStaffFabUI();
+          if (done) done();
+        });
+    }
+
+    function updateStaffFabUI() {
       var fab = document.getElementById('staff-fab');
       if (fab) fab.classList.toggle('is-logged-in', isStaffLoggedIn);
     }
-
     function refreshViewCountDependentViews() {
       if (listLoaded) {
         var interviewsSearchEl = document.getElementById('interviews-search');
@@ -2083,13 +2110,14 @@
     }
 
     function showStaffPanelView() {
-      // We can't know for sure whether the person is logged in until
-      // siteSettings (and its staffAuthHash) have loaded — deciding too
-      // early was the cause of being bounced to the login screen on every
-      // reload, even with a valid saved session. So if settings haven't
-      // loaded yet, just show a brief loading state and wait; loadSettings()
-      // will call this function again once it's safe to decide.
-      if (!settingsLoaded) {
+      // We can't know for sure whether the person is logged in until the
+      // server has confirmed the saved session token is still valid.
+      // Deciding too early was the cause of being bounced to the login
+      // screen on every reload, even with a valid saved session. So if
+      // that check hasn't finished yet, just show a brief loading state
+      // and wait; refreshStaffLoginState()'s callback will call this
+      // function again once it's safe to decide.
+      if (!staffSessionVerified) {
         pendingStaffPanel = true;
         hideAllViews();
         document.getElementById('topbar-subtitle').textContent = 'Staff Panel';
@@ -2110,14 +2138,36 @@
 
     function loadStaffSchedule() {
       var wrap = document.getElementById('staff-schedule-wrap');
-      var url = siteSettings.staffScheduleUrl;
-      if (!url) {
-        wrap.innerHTML = '<div class="empty">No schedule URL configured yet &mdash; add a "Staff Schedule URL" row to the Settings sheet.</div>';
-        return;
-      }
-      wrap.innerHTML =
-        '<iframe src="' + escapeHtml(url) + '" style="width:100%; height:75vh; min-height:520px; max-height:800px; border:3px solid var(--ink); background:#141d26;" loading="lazy"></iframe>' +
-        '<p style="margin-top:10px;"><a href="' + escapeHtml(url) + '" target="_blank" rel="noopener" style="font-size:12px; font-weight:800;">Open in a new tab &#8599;</a></p>';
+      var token = null;
+      try { token = localStorage.getItem(STAFF_TOKEN_KEY); } catch (e) {}
+
+      if (!token) { showStaffLoginView(); return; }
+
+      wrap.innerHTML = '<div class="loading">Loading interview schedule&hellip;</div>';
+
+      api('staffSchedule', { token: token })
+        .then(function (result) {
+          if (!result || !result.ok) {
+            // Session expired or was revoked server-side — send them
+            // back to log in rather than showing a broken panel.
+            try { localStorage.removeItem(STAFF_TOKEN_KEY); } catch (e) {}
+            isStaffLoggedIn = false;
+            updateStaffFabUI();
+            showStaffLoginView();
+            return;
+          }
+          var url = result.url;
+          if (!url) {
+            wrap.innerHTML = '<div class="empty">No schedule URL configured yet &mdash; add a "Staff Schedule URL" row to the Settings sheet.</div>';
+            return;
+          }
+          wrap.innerHTML =
+            '<iframe src="' + escapeHtml(url) + '" style="width:100%; height:75vh; min-height:520px; max-height:800px; border:3px solid var(--ink); background:#141d26;" loading="lazy"></iframe>' +
+            '<p style="margin-top:10px;"><a href="' + escapeHtml(url) + '" target="_blank" rel="noopener" style="font-size:12px; font-weight:800;">Open in a new tab &#8599;</a></p>';
+        })
+        .catch(function (err) {
+          renderErrorWithRetry(wrap, 'Couldn\'t load the schedule: ' + escapeHtml(err.message || err), loadStaffSchedule);
+        });
     }
 
     function showListView() {
@@ -2171,6 +2221,9 @@
       refreshViewCountDependentViews();
     });
     document.getElementById('staff-logout-btn').addEventListener('click', function () {
+      var token = null;
+      try { token = localStorage.getItem(STAFF_TOKEN_KEY); } catch (e) {}
+      if (token) { api('staffLogout', { token: token }).catch(function () {}); }
       try { localStorage.removeItem(STAFF_TOKEN_KEY); } catch (e) {}
       isStaffLoggedIn = false;
       document.getElementById('staff-fab').classList.remove('is-logged-in');
@@ -2296,18 +2349,21 @@
         .then(function (settings) {
           siteSettings = settings || { formUrl: '', showViewCount: false, defaultImage: '', social: {} };
           settingsLoaded = true;
-          refreshStaffLoginState();
           renderRail();
           document.getElementById('social-bar').innerHTML = renderSocialBar();
-          refreshViewCountDependentViews();
-          if (pendingStaffPanel) showStaffPanelView();
+          refreshStaffLoginState(function () {
+            refreshViewCountDependentViews();
+            if (pendingStaffPanel) showStaffPanelView();
+          });
         })
         .catch(function () {
           siteSettings = { formUrl: '', showViewCount: false, defaultImage: '', social: {} };
           settingsLoaded = true;
           renderRail();
           document.getElementById('social-bar').innerHTML = '';
-          if (pendingStaffPanel) showStaffPanelView();
+          refreshStaffLoginState(function () {
+            if (pendingStaffPanel) showStaffPanelView();
+          });
         });
     }
 
