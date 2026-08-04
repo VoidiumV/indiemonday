@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://indiemonday.pages.dev/sitemap.xml
