@@ -1,4 +1,6 @@
 User-agent: *
 Allow: /
+Disallow: /staff
+Disallow: /staff-login
 
 Sitemap: https://indiemonday.pages.dev/sitemap.xml
