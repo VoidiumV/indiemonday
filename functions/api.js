@@ -28,7 +28,7 @@
  * response straight back through.
  */
 
-var API_BASE_URL = 'https://script.google.com/macros/s/AKfycbzSd8HQAhYgwVCWWU3aRg_3lKQfpIjDgJgeHIHwOULrYrSdWCzBR0vSL2YOyTBZ6m49/exec';
+var API_BASE_URL = 'https://script.google.com/macros/s/AKfycbwEBRzP5v1rD0WvxgEG1EV2FnPSKvgNhCo7uiPAgZSpBrK4HnF2neyG7-0en94aAxCj/exec';
 
 export async function onRequestGet(context) {
   var incomingUrl = new URL(context.request.url);
