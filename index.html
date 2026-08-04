@@ -1555,8 +1555,9 @@
 
     <div class="main-col">
       <div id="view-list" style="display:none">
-        <div class="search-box-wrap" style="max-width:680px; margin:26px auto 0; padding:0 20px;">
-          <input type="text" class="search-box" id="interviews-search" placeholder="Search by artist or interviewer&hellip;">
+        <div class="search-box-wrap" style="max-width:680px; margin:26px auto 0; padding:0 20px; display:flex; gap:10px; align-items:center;">
+          <input type="text" class="search-box" id="interviews-search" placeholder="Search by artist or interviewer&hellip;" style="flex:1;">
+          <button type="button" class="copy-link-btn" id="interviews-sort-toggle" title="Toggle sort order" style="white-space:nowrap; flex-shrink:0;">&#8595; Newest</button>
         </div>
         <div class="feed" id="feed">
           <div class="loading">Loading interviews&hellip;</div>
@@ -1592,7 +1593,7 @@
     // ================================================================
     // CONFIG
     // ================================================================
-    var API_BASE_URL = 'https://script.google.com/macros/s/AKfycbwVW-v6Kvq-PPN9zr7sYESMzcm_Fzl8nb_Wg_QPwsofK2sPUwH4p1Vo9HLuKbG6PguA/exec';
+    var API_BASE_URL = 'https://script.google.com/macros/s/AKfycbzSd8HQAhYgwVCWWU3aRg_3lKQfpIjDgJgeHIHwOULrYrSdWCzBR0vSL2YOyTBZ6m49/exec';
 
     (function preconnectApi() {
       try {
@@ -1608,6 +1609,9 @@
     })();
 
     var listLoaded = false;
+    var settingsLoaded = false;
+    var pendingStaffPanel = false;
+    var interviewsSortDir = 'desc'; // 'desc' = newest first, 'asc' = oldest first
     var teamLoaded = false;
     var songsLoaded = false;
     var albumsLoaded = false;
@@ -2025,7 +2029,10 @@
     }
 
     function refreshViewCountDependentViews() {
-      if (listLoaded) renderList(allPosts);
+      if (listLoaded) {
+        var interviewsSearchEl = document.getElementById('interviews-search');
+        renderList(getFilteredSortedInterviews(interviewsSearchEl ? interviewsSearchEl.value : ''));
+      }
       if (weeklyPostsLoaded) renderWeeklyPostsList(allWeeklyPosts);
     }
 
@@ -2075,6 +2082,21 @@
     }
 
     function showStaffPanelView() {
+      // We can't know for sure whether the person is logged in until
+      // siteSettings (and its staffAuthHash) have loaded — deciding too
+      // early was the cause of being bounced to the login screen on every
+      // reload, even with a valid saved session. So if settings haven't
+      // loaded yet, just show a brief loading state and wait; loadSettings()
+      // will call this function again once it's safe to decide.
+      if (!settingsLoaded) {
+        pendingStaffPanel = true;
+        hideAllViews();
+        document.getElementById('topbar-subtitle').textContent = 'Staff Panel';
+        document.getElementById('view-staff-panel').style.display = '';
+        document.getElementById('staff-schedule-wrap').innerHTML = '<div class="loading">Loading&hellip;</div>';
+        return;
+      }
+      pendingStaffPanel = false;
       if (!isStaffLoggedIn) { showStaffLoginView(); return; }
       hideAllViews();
       document.getElementById('topbar-subtitle').textContent = 'Staff Panel';
@@ -2210,9 +2232,43 @@
     wireSearch('artists-search', function () { return allArtists; }, renderArtists, function (item) {
       return [item.artist];
     });
-    wireSearch('interviews-search', function () { return allPosts; }, renderList, function (item) {
-      return [item.artist, item.interviewer, item.issueNum];
-    }, 'interviews');
+    function getFilteredSortedInterviews(query) {
+      var list = !query || !query.trim() ? allPosts.slice() : allPosts.filter(function (item) {
+        return textMatches(query, [item.artist, item.interviewer, item.issueNum]);
+      });
+      list.sort(function (a, b) {
+        var diff = (b.dateRaw || 0) - (a.dateRaw || 0);
+        return interviewsSortDir === 'desc' ? diff : -diff;
+      });
+      return list;
+    }
+
+    function updateSortToggleLabel() {
+      var btn = document.getElementById('interviews-sort-toggle');
+      if (!btn) return;
+      if (interviewsSortDir === 'desc') {
+        btn.innerHTML = '&#8595; Newest';
+        btn.title = 'Showing newest first — click to show oldest first';
+      } else {
+        btn.innerHTML = '&#8593; Oldest';
+        btn.title = 'Showing oldest first — click to show newest first';
+      }
+    }
+
+    document.getElementById('interviews-search').addEventListener('input', function () {
+      paginationState.interviews = PAGE_SIZE;
+      renderList(getFilteredSortedInterviews(this.value));
+    });
+
+    document.getElementById('interviews-sort-toggle').addEventListener('click', function () {
+      interviewsSortDir = interviewsSortDir === 'desc' ? 'asc' : 'desc';
+      updateSortToggleLabel();
+      paginationState.interviews = PAGE_SIZE;
+      renderList(getFilteredSortedInterviews(document.getElementById('interviews-search').value));
+    });
+
+    updateSortToggleLabel();
+
     document.getElementById('back-link').addEventListener('click', showListView);
 
     document.getElementById('copy-interview-link-btn').addEventListener('click', function () {
@@ -2238,17 +2294,19 @@
       api('settings')
         .then(function (settings) {
           siteSettings = settings || { formUrl: '', showViewCount: false, defaultImage: '', social: {} };
+          settingsLoaded = true;
           refreshStaffLoginState();
           renderRail();
           document.getElementById('social-bar').innerHTML = renderSocialBar();
           refreshViewCountDependentViews();
-          var path = window.location.pathname.replace(/^\/+|\/+$/g, '');
-          if (path === 'staff' || path === 'staff-login') routeFromPath();
+          if (pendingStaffPanel) showStaffPanelView();
         })
         .catch(function () {
           siteSettings = { formUrl: '', showViewCount: false, defaultImage: '', social: {} };
+          settingsLoaded = true;
           renderRail();
           document.getElementById('social-bar').innerHTML = '';
+          if (pendingStaffPanel) showStaffPanelView();
         });
     }
 
@@ -2642,7 +2700,7 @@
         .then(function (list) {
           listLoaded = true;
           allPosts = list || [];
-          renderList(allPosts);
+          renderList(getFilteredSortedInterviews(document.getElementById('interviews-search').value));
           renderRail();
         })
         .catch(function (err) {
