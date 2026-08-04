@@ -1589,20 +1589,16 @@
     // ================================================================
     // CONFIG
     // ================================================================
-    var API_BASE_URL = 'https://script.google.com/macros/s/AKfycbzSd8HQAhYgwVCWWU3aRg_3lKQfpIjDgJgeHIHwOULrYrSdWCzBR0vSL2YOyTBZ6m49/exec';
-
-    (function preconnectApi() {
-      try {
-        var origin = new URL(API_BASE_URL).origin;
-        ['preconnect', 'dns-prefetch'].forEach(function (rel) {
-          var link = document.createElement('link');
-          link.rel = rel;
-          link.href = origin;
-          if (rel === 'preconnect') link.crossOrigin = 'anonymous';
-          document.head.appendChild(link);
-        });
-      } catch (e) { }
-    })();
+    // Same-origin proxy (see functions/api.js) instead of calling
+    // script.google.com directly from the browser. Many browsers,
+    // privacy extensions (Brave Shields, uBlock Origin, Safari ITP),
+    // and corporate/security proxies specifically block direct
+    // client-side requests to script.google.com / script.googleusercontent.com
+    // since those domains are heavily abused by phishing kits and end up
+    // on shared blocklists. Routing through our own origin avoids that
+    // entirely, since the real request to Apps Script now happens
+    // server-side, inside the Cloudflare Function.
+    var API_BASE_URL = '/api';
 
     var listLoaded = false;
     var settingsLoaded = false;
@@ -1656,47 +1652,24 @@
       );
     }
 
-    // ---------- JSONP API CLIENT (avoids CORS issues talking to Apps Script) ----------
-    var jsonpCounter = 0;
+    // ---------- API CLIENT (fetch, routed through our own /api proxy) ----------
+    // This used to be JSONP straight to script.google.com. That direct
+    // client-side request is exactly what browsers, privacy extensions
+    // (Brave Shields, uBlock Origin, Safari ITP), and corporate/security
+    // proxies block, since script.google.com / script.googleusercontent.com
+    // are heavily abused by phishing kits and sit on shared blocklists.
+    // Now the browser only ever talks to its own origin (/api), and
+    // functions/api.js does the real fetch to Apps Script server-side,
+    // where none of that blocking applies. Plain fetch also means we no
+    // longer need a callback param, a <script> tag, or a global on
+    // window per request.
     var API_TIMEOUT_MS = 20000;
     var inFlightRequests = {};
 
     function apiOnce(action, params) {
       return new Promise(function (resolve, reject) {
-        var cbName = '_im_cb_' + (jsonpCounter++) + '_' + Date.now();
-        var script = document.createElement('script');
-        var settled = false;
-        var timeoutId;
-
-        function cleanup() {
-          delete window[cbName];
-          if (script.parentNode) script.parentNode.removeChild(script);
-          clearTimeout(timeoutId);
-        }
-
-        window[cbName] = function (data) {
-          if (settled) return;
-          settled = true;
-          cleanup();
-          resolve(data);
-        };
-
-        script.onerror = function () {
-          if (settled) return;
-          settled = true;
-          cleanup();
-          reject(new Error('Network error contacting API for "' + action + '"'));
-        };
-
-        timeoutId = setTimeout(function () {
-          if (settled) return;
-          settled = true;
-          cleanup();
-          reject(new Error('That took too long to load'));
-        }, API_TIMEOUT_MS);
-
         var url = API_BASE_URL + (API_BASE_URL.indexOf('?') === -1 ? '?' : '&') +
-          'action=' + encodeURIComponent(action) + '&callback=' + cbName;
+          'action=' + encodeURIComponent(action);
 
         for (var k in params) {
           if (params[k] !== undefined && params[k] !== null) {
@@ -1704,8 +1677,34 @@
           }
         }
 
-        script.src = url;
-        document.body.appendChild(script);
+        var settled = false;
+        var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+
+        var timeoutId = setTimeout(function () {
+          if (settled) return;
+          settled = true;
+          if (controller) controller.abort();
+          reject(new Error('That took too long to load'));
+        }, API_TIMEOUT_MS);
+
+        fetch(url, { signal: controller ? controller.signal : undefined })
+          .then(function (res) {
+            if (!res.ok) throw new Error('Server returned ' + res.status);
+            return res.json();
+          })
+          .then(function (data) {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timeoutId);
+            resolve(data);
+          })
+          .catch(function (err) {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timeoutId);
+            if (err && err.name === 'AbortError') return; // already rejected via the timeout above
+            reject(new Error('Network error contacting API for "' + action + '"'));
+          });
       });
     }
 
