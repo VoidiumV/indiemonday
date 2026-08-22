@@ -1,36 +1,5 @@
 /**
- * Cloudflare Pages Function — per-page Open Graph / Twitter Card tags.
- *
- * WHY THIS EXISTS
- * Indie Monday is a client-rendered single-page app: every URL (e.g.
- * /interview-12) is actually served the same static index.html, and the
- * real title/image only appears after JavaScript runs and fetches data
- * from the Apps Script API. That's fine for real visitors, but link-preview
- * bots (Facebook, Twitter/X, Slack, Discord, iMessage, etc.) don't run JS —
- * they only ever see the raw HTML you send them. Without this, every shared
- * link shows the same generic site-wide preview instead of the artist's
- * name/photo.
- *
- * WHAT THIS DOES
- * For requests to /interview-* or /article-*(/weekly-*) whose User-Agent
- * matches a known crawler, this fetches that post's data from the same
- * Apps Script API the frontend uses, then rewrites the <title> and
- * <meta property="og:..."> / <meta name="twitter:..."> tags in the HTML
- * response before it goes out — using HTMLRewriter, which streams the
- * rewrite without re-downloading or re-parsing the whole page.
- * Regular visitors (non-bot User-Agents) are untouched and get the normal
- * cached SPA response.
- *
- * ONE-TIME SETUP
- * 1. Commit this file as-is to your repo at: functions/_middleware.js
- *    (sibling to index.html and _redirects — Cloudflare Pages auto-detects
- *    anything under a top-level "functions" folder, no build config needed).
- * 2. Set API_BASE_URL below to the EXACT same Apps Script /exec URL you put
- *    in index.html's API_BASE_URL.
- * 3. Push to your connected branch — Cloudflare Pages redeploys automatically.
- * 4. Test it: use a tool like https://www.opengraph.xyz or
- *    https://cards-dev.twitter.com/validator against a real interview URL
- *    (a plain browser visit won't show you the bot-only behavior).
+ * Cloudflare Pages Function
  */
 
 var API_BASE_URL = 'https://script.google.com/macros/s/AKfycbzSd8HQAhYgwVCWWU3aRg_3lKQfpIjDgJgeHIHwOULrYrSdWCzBR0vSL2YOyTBZ6m49/exec';
@@ -45,7 +14,6 @@ export async function onRequest(context) {
   var isInterview = path.indexOf('interview-') === 0;
   var isWeekly = path.indexOf('article-') === 0 || path.indexOf('weekly-') === 0;
 
-  // Not a shareable post page — nothing to inject, hand off as normal.
   if (!isInterview && !isWeekly) {
     return context.next();
   }
@@ -56,7 +24,6 @@ export async function onRequest(context) {
   }
 
   if (!API_BASE_URL || API_BASE_URL.indexOf('PASTE_YOUR') === 0) {
-    // Not configured yet — fall through rather than break the page.
     return context.next();
   }
 
@@ -90,8 +57,6 @@ export async function onRequest(context) {
       }
     }
   } catch (e) {
-    // API call failed — fall through to the default site-wide tags rather
-    // than serve a broken page.
     return context.next();
   }
 
