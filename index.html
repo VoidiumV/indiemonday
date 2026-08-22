@@ -1589,21 +1589,12 @@
     // ================================================================
     // CONFIG
     // ================================================================
-    // Same-origin proxy (see functions/api.js) instead of calling
-    // script.google.com directly from the browser. Many browsers,
-    // privacy extensions (Brave Shields, uBlock Origin, Safari ITP),
-    // and corporate/security proxies specifically block direct
-    // client-side requests to script.google.com / script.googleusercontent.com
-    // since those domains are heavily abused by phishing kits and end up
-    // on shared blocklists. Routing through our own origin avoids that
-    // entirely, since the real request to Apps Script now happens
-    // server-side, inside the Cloudflare Function.
     var API_BASE_URL = '/api';
 
     var listLoaded = false;
     var settingsLoaded = false;
     var pendingStaffPanel = false;
-    var interviewsSortDir = 'desc'; // 'desc' = newest first, 'asc' = oldest first
+    var interviewsSortDir = 'desc';
     var teamLoaded = false;
     var songsLoaded = false;
     var albumsLoaded = false;
@@ -1652,17 +1643,7 @@
       );
     }
 
-    // ---------- API CLIENT (fetch, routed through our own /api proxy) ----------
-    // This used to be JSONP straight to script.google.com. That direct
-    // client-side request is exactly what browsers, privacy extensions
-    // (Brave Shields, uBlock Origin, Safari ITP), and corporate/security
-    // proxies block, since script.google.com / script.googleusercontent.com
-    // are heavily abused by phishing kits and sit on shared blocklists.
-    // Now the browser only ever talks to its own origin (/api), and
-    // functions/api.js does the real fetch to Apps Script server-side,
-    // where none of that blocking applies. Plain fetch also means we no
-    // longer need a callback param, a <script> tag, or a global on
-    // window per request.
+    // ---------- API CLIENT ----------
     var API_TIMEOUT_MS = 20000;
     var inFlightRequests = {};
 
@@ -1702,7 +1683,7 @@
             if (settled) return;
             settled = true;
             clearTimeout(timeoutId);
-            if (err && err.name === 'AbortError') return; // already rejected via the timeout above
+            if (err && err.name === 'AbortError') return;
             reject(new Error('Network error contacting API for "' + action + '"'));
           });
       });
@@ -1932,8 +1913,6 @@
       document.getElementById('view-weekly-list').style.display = 'none';
       document.getElementById('view-weekly-post').style.display = 'none';
       document.getElementById('app-shell').style.display = 'none';
-      // Staff FAB only ever shows on the home page — hide it by default
-      // on every navigation, and showHomeView() will turn it back on.
       document.getElementById('staff-fab').style.display = 'none';
     }
 
@@ -2013,10 +1992,6 @@
     }
 
     // ---------- STAFF LOGIN / PANEL ----------
-    // The old version decided login state by comparing a locally-stored
-    // value against a hash that the public /settings endpoint used to
-    // leak to every visitor — that was the bug. Now we ask the server
-    // "is this token still valid?" and it's the only source of truth.
     var staffSessionVerified = false;
 
     function refreshStaffLoginState(done) {
@@ -2114,13 +2089,6 @@
     }
 
     function showStaffPanelView() {
-      // We can't know for sure whether the person is logged in until the
-      // server has confirmed the saved session token is still valid.
-      // Deciding too early was the cause of being bounced to the login
-      // screen on every reload, even with a valid saved session. So if
-      // that check hasn't finished yet, just show a brief loading state
-      // and wait; refreshStaffLoginState()'s callback will call this
-      // function again once it's safe to decide.
       if (!staffSessionVerified) {
         pendingStaffPanel = true;
         hideAllViews();
@@ -2756,9 +2724,6 @@
       feed.innerHTML = visiblePosts.map(function (item) {
         var img = item.image ? escapeHtml(item.image) : fallback;
         var avatarStyle = item.cardColor ? ' style="background:' + escapeHtml(item.cardColor) + '"' : '';
-        // Cards with a sheet-picked background color always keep black
-        // text (see .card.has-custom-color rule) since those colors are
-        // usually light/pastel and clash with dark-mode's white text.
         var customColorClass = item.cardColor ? ' has-custom-color' : '';
 
         var parsed = parseArtistMeta(item.artist);
