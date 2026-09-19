@@ -4,6 +4,13 @@
   <meta name="google-site-verification" content="bFTKfG4aleaUTfB3flVidnNd68Ffc6ccMYkcfAFdDoo" />
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="/logos/favicon.ico" sizes="any">
+  <link rel="icon" type="image/svg+xml" href="/logos/favicon.svg">
+  <link rel="icon" type="image/png" sizes="48x48" href="/logos/favicon-48.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/logos/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/logos/favicon-16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/logos/apple-touch-icon.png">
+  <link rel="manifest" href="/logos/site.webmanifest">
   <title>Indie Monday</title>
   <meta name="description" content="Your #1 source for all indie music. New posts every monday.">
   <meta property="og:type" content="website">
@@ -1589,12 +1596,25 @@
     // ================================================================
     // CONFIG
     // ================================================================
-    var API_BASE_URL = '/api';
+    var API_BASE_URL = 'https://script.google.com/macros/s/AKfycbzSd8HQAhYgwVCWWU3aRg_3lKQfpIjDgJgeHIHwOULrYrSdWCzBR0vSL2YOyTBZ6m49/exec';
+
+    (function preconnectApi() {
+      try {
+        var origin = new URL(API_BASE_URL).origin;
+        ['preconnect', 'dns-prefetch'].forEach(function (rel) {
+          var link = document.createElement('link');
+          link.rel = rel;
+          link.href = origin;
+          if (rel === 'preconnect') link.crossOrigin = 'anonymous';
+          document.head.appendChild(link);
+        });
+      } catch (e) { }
+    })();
 
     var listLoaded = false;
     var settingsLoaded = false;
     var pendingStaffPanel = false;
-    var interviewsSortDir = 'desc';
+    var interviewsSortDir = 'desc'; // 'desc' = newest first, 'asc' = oldest first
     var teamLoaded = false;
     var songsLoaded = false;
     var albumsLoaded = false;
@@ -1643,14 +1663,47 @@
       );
     }
 
-    // ---------- API CLIENT ----------
+    // ---------- JSONP API CLIENT (avoids CORS issues talking to Apps Script) ----------
+    var jsonpCounter = 0;
     var API_TIMEOUT_MS = 20000;
     var inFlightRequests = {};
 
     function apiOnce(action, params) {
       return new Promise(function (resolve, reject) {
+        var cbName = '_im_cb_' + (jsonpCounter++) + '_' + Date.now();
+        var script = document.createElement('script');
+        var settled = false;
+        var timeoutId;
+
+        function cleanup() {
+          delete window[cbName];
+          if (script.parentNode) script.parentNode.removeChild(script);
+          clearTimeout(timeoutId);
+        }
+
+        window[cbName] = function (data) {
+          if (settled) return;
+          settled = true;
+          cleanup();
+          resolve(data);
+        };
+
+        script.onerror = function () {
+          if (settled) return;
+          settled = true;
+          cleanup();
+          reject(new Error('Network error contacting API for "' + action + '"'));
+        };
+
+        timeoutId = setTimeout(function () {
+          if (settled) return;
+          settled = true;
+          cleanup();
+          reject(new Error('That took too long to load'));
+        }, API_TIMEOUT_MS);
+
         var url = API_BASE_URL + (API_BASE_URL.indexOf('?') === -1 ? '?' : '&') +
-          'action=' + encodeURIComponent(action);
+          'action=' + encodeURIComponent(action) + '&callback=' + cbName;
 
         for (var k in params) {
           if (params[k] !== undefined && params[k] !== null) {
@@ -1658,34 +1711,8 @@
           }
         }
 
-        var settled = false;
-        var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
-
-        var timeoutId = setTimeout(function () {
-          if (settled) return;
-          settled = true;
-          if (controller) controller.abort();
-          reject(new Error('That took too long to load'));
-        }, API_TIMEOUT_MS);
-
-        fetch(url, { signal: controller ? controller.signal : undefined })
-          .then(function (res) {
-            if (!res.ok) throw new Error('Server returned ' + res.status);
-            return res.json();
-          })
-          .then(function (data) {
-            if (settled) return;
-            settled = true;
-            clearTimeout(timeoutId);
-            resolve(data);
-          })
-          .catch(function (err) {
-            if (settled) return;
-            settled = true;
-            clearTimeout(timeoutId);
-            if (err && err.name === 'AbortError') return;
-            reject(new Error('Network error contacting API for "' + action + '"'));
-          });
+        script.src = url;
+        document.body.appendChild(script);
       });
     }
 
@@ -1913,6 +1940,8 @@
       document.getElementById('view-weekly-list').style.display = 'none';
       document.getElementById('view-weekly-post').style.display = 'none';
       document.getElementById('app-shell').style.display = 'none';
+      // Staff FAB only ever shows on the home page — hide it by default
+      // on every navigation, and showHomeView() will turn it back on.
       document.getElementById('staff-fab').style.display = 'none';
     }
 
@@ -1992,6 +2021,10 @@
     }
 
     // ---------- STAFF LOGIN / PANEL ----------
+    // The old version decided login state by comparing a locally-stored
+    // value against a hash that the public /settings endpoint used to
+    // leak to every visitor — that was the bug. Now we ask the server
+    // "is this token still valid?" and it's the only source of truth.
     var staffSessionVerified = false;
 
     function refreshStaffLoginState(done) {
@@ -2089,6 +2122,13 @@
     }
 
     function showStaffPanelView() {
+      // We can't know for sure whether the person is logged in until the
+      // server has confirmed the saved session token is still valid.
+      // Deciding too early was the cause of being bounced to the login
+      // screen on every reload, even with a valid saved session. So if
+      // that check hasn't finished yet, just show a brief loading state
+      // and wait; refreshStaffLoginState()'s callback will call this
+      // function again once it's safe to decide.
       if (!staffSessionVerified) {
         pendingStaffPanel = true;
         hideAllViews();
@@ -2724,6 +2764,9 @@
       feed.innerHTML = visiblePosts.map(function (item) {
         var img = item.image ? escapeHtml(item.image) : fallback;
         var avatarStyle = item.cardColor ? ' style="background:' + escapeHtml(item.cardColor) + '"' : '';
+        // Cards with a sheet-picked background color always keep black
+        // text (see .card.has-custom-color rule) since those colors are
+        // usually light/pastel and clash with dark-mode's white text.
         var customColorClass = item.cardColor ? ' has-custom-color' : '';
 
         var parsed = parseArtistMeta(item.artist);
@@ -2807,7 +2850,7 @@
       website: '<svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm7.9 9h-3.4c-.1-2-.5-3.8-1.1-5.2A8 8 0 0 1 19.9 11ZM12 4c.7 1 1.4 3 1.6 5H10.4c.2-2 .9-4 1.6-5Zm-3.4 1.8C8 7.2 7.6 9 7.5 11H4.1a8 8 0 0 1 4.5-5.2ZM4.1 13h3.4c.1 2 .5 3.8 1.1 5.2A8 8 0 0 1 4.1 13Zm7.9 7c-.7-1-1.4-3-1.6-5h3.2c-.2 2-.9 4-1.6 5Zm3.4-1.8c.6-1.4 1-3.2 1.1-5.2h3.4a8 8 0 0 1-4.5 5.2Z"/></svg>'
     };
     var SOCIAL_ORDER = ['twitter', 'instagram', 'discord', 'tiktok', 'youtube', 'website'];
-    var SOCIAL_LABELS = { twitter: 'Twitter', instagram: 'Instagram', discord: 'Discord', tiktok: 'TikTok', youtube: 'YouTube', website: 'Website' };
+    var SOCIAL_LABELS = { twitter: 'Twitter / X', instagram: 'Instagram', discord: 'Discord', tiktok: 'TikTok', youtube: 'YouTube', website: 'Website' };
 
     function renderSocialBar() {
       var s = siteSettings.social || {};
