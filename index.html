@@ -1685,6 +1685,12 @@
           if (settled) return;
           settled = true;
           cleanup();
+        
+          if (data && data.error) {
+            reject(new Error(data.error));
+            return;
+          }
+        
           resolve(data);
         };
 
@@ -2732,7 +2738,11 @@
       api('posts')
         .then(function (list) {
           listLoaded = true;
-          allPosts = list || [];
+          if (!Array.isArray(list)) {
+            throw new Error('Interviews API returned an invalid response.');
+          }
+          
+          allPosts = list;
           renderList(getFilteredSortedInterviews(document.getElementById('interviews-search').value));
           renderRail();
         })
