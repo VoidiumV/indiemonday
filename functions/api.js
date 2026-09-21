@@ -2,7 +2,7 @@
  * Cloudflare Pages Function
  */
 
-var API_BASE_URL = 'https://script.google.com/macros/s/AKfycbyXcGhdoiZHq97NqWgLrA91GWh1q4g2RQG9VfzTJZ7XnBhGSQglsHh9lDeal4nQkKzR/exec';
+var API_BASE_URL = 'https://script.google.com/macros/s/AKfycbz1iYYp6t_XWZVyve3HcEHMeGML3hNkMQdOoITRggvB7c45zml4XMnkBuBL7h1nAbMA/exec';
 
 export async function onRequestGet(context) {
   var incomingUrl = new URL(context.request.url);
