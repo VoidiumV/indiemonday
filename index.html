@@ -1708,8 +1708,10 @@
 
         function onMessage(event) {
           if (settled) return;
-          if (event.source !== iframe.contentWindow) return;
-
+          // Apps Script may place the HtmlService document behind an additional
+          // sandbox frame. In that case event.source is not necessarily the
+          // immediate iframe.contentWindow, so validate using the random
+          // requestId instead of requiring an exact source window.
           var data = event.data || {};
           if (data.source !== 'indie-monday-api' || data.requestId !== requestId) return;
 
