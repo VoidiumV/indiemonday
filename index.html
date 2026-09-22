@@ -1596,7 +1596,7 @@
     // ================================================================
     // CONFIG
     // ================================================================
-    var API_BASE_URL = 'https://script.google.com/macros/s/AKfycbwpNuU9Gt2Hqjrxw1IysPzSPtWsjCIqrPmhlRt_5h371G4hYvSfsTr13RCiDwFBnvRi/exec';
+    var API_BASE_URL = 'https://script.google.com/macros/s/AKfycbz-uGu3wNnC3B_BXrIG9-qpf6wVE6D8rFuDVqRuFUtL39rPJZvv2l-MA0o0M6gcA3vl/exec';
 
     (function preconnectApi() {
       try {
@@ -1663,53 +1663,81 @@
       );
     }
 
-    // ---------- JSONP API CLIENT (avoids CORS issues talking to Apps Script) ----------
-    var jsonpCounter = 0;
+    // ---------- Apps Script API CLIENT ----------
+    // Apps Script web-app URLs redirect to script.googleusercontent.com.
+    // This page has a strict script-src CSP that permits script.google.com
+    // but not script.googleusercontent.com, so JSONP <script> requests are
+    // blocked. The backend therefore exposes an iframe bridge instead.
+    var apiRequestCounter = 0;
     var API_TIMEOUT_MS = 20000;
     var inFlightRequests = {};
 
+    function decodeApiBase64(base64) {
+      var binary = atob(base64);
+      var bytes = new Uint8Array(binary.length);
+      for (var i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return new TextDecoder('utf-8').decode(bytes);
+    }
+
     function apiOnce(action, params) {
       return new Promise(function (resolve, reject) {
-        var cbName = '_im_cb_' + (jsonpCounter++) + '_' + Date.now();
-        var script = document.createElement('script');
+        params = params || {};
+
+        var requestId = 'im_' + (apiRequestCounter++) + '_' + Date.now();
+        var iframe = document.createElement('iframe');
         var settled = false;
         var timeoutId;
 
+        iframe.style.display = 'none';
+        iframe.setAttribute('aria-hidden', 'true');
+
         function cleanup() {
-          delete window[cbName];
-          if (script.parentNode) script.parentNode.removeChild(script);
+          window.removeEventListener('message', onMessage);
+          if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
           clearTimeout(timeoutId);
         }
 
-        window[cbName] = function (data) {
+        function finishError(message) {
           if (settled) return;
           settled = true;
           cleanup();
-        
-          if (data && data.error) {
-            reject(new Error(data.error));
-            return;
-          }
-        
-          resolve(data);
-        };
+          reject(new Error(message));
+        }
 
-        script.onerror = function () {
+        function onMessage(event) {
           if (settled) return;
+          if (event.source !== iframe.contentWindow) return;
+
+          var data = event.data || {};
+          if (data.source !== 'indie-monday-api' || data.requestId !== requestId) return;
+
           settled = true;
           cleanup();
-          reject(new Error('Network error contacting API for "' + action + '"'));
-        };
+
+          try {
+            var result = JSON.parse(decodeApiBase64(data.payload || ''));
+            if (result && result.error) {
+              reject(new Error(result.error));
+              return;
+            }
+            resolve(result);
+          } catch (err) {
+            reject(new Error('Invalid response from API.'));
+          }
+        }
+
+        window.addEventListener('message', onMessage);
 
         timeoutId = setTimeout(function () {
-          if (settled) return;
-          settled = true;
-          cleanup();
-          reject(new Error('That took too long to load'));
+          finishError('That took too long to load');
         }, API_TIMEOUT_MS);
 
         var url = API_BASE_URL + (API_BASE_URL.indexOf('?') === -1 ? '?' : '&') +
-          'action=' + encodeURIComponent(action) + '&callback=' + cbName;
+          'action=bridge' +
+          '&bridgeAction=' + encodeURIComponent(action) +
+          '&requestId=' + encodeURIComponent(requestId);
 
         for (var k in params) {
           if (params[k] !== undefined && params[k] !== null) {
@@ -1717,8 +1745,8 @@
           }
         }
 
-        script.src = url;
-        document.body.appendChild(script);
+        iframe.src = url;
+        document.body.appendChild(iframe);
       });
     }
 
