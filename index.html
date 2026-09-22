@@ -1663,83 +1663,53 @@
       );
     }
 
-    // ---------- Apps Script API CLIENT ----------
-    // Apps Script web-app URLs redirect to script.googleusercontent.com.
-    // This page has a strict script-src CSP that permits script.google.com
-    // but not script.googleusercontent.com, so JSONP <script> requests are
-    // blocked. The backend therefore exposes an iframe bridge instead.
-    var apiRequestCounter = 0;
+    // ---------- JSONP API CLIENT (avoids CORS issues talking to Apps Script) ----------
+    var jsonpCounter = 0;
     var API_TIMEOUT_MS = 20000;
     var inFlightRequests = {};
 
-    function decodeApiBase64(base64) {
-      var binary = atob(base64);
-      var bytes = new Uint8Array(binary.length);
-      for (var i = 0; i < binary.length; i++) {
-        bytes[i] = binary.charCodeAt(i);
-      }
-      return new TextDecoder('utf-8').decode(bytes);
-    }
-
     function apiOnce(action, params) {
       return new Promise(function (resolve, reject) {
-        params = params || {};
-
-        var requestId = 'im_' + (apiRequestCounter++) + '_' + Date.now();
-        var iframe = document.createElement('iframe');
+        var cbName = '_im_cb_' + (jsonpCounter++) + '_' + Date.now();
+        var script = document.createElement('script');
         var settled = false;
         var timeoutId;
 
-        iframe.style.display = 'none';
-        iframe.setAttribute('aria-hidden', 'true');
-
         function cleanup() {
-          window.removeEventListener('message', onMessage);
-          if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+          delete window[cbName];
+          if (script.parentNode) script.parentNode.removeChild(script);
           clearTimeout(timeoutId);
         }
 
-        function finishError(message) {
+        window[cbName] = function (data) {
           if (settled) return;
           settled = true;
           cleanup();
-          reject(new Error(message));
-        }
-
-        function onMessage(event) {
-          if (settled) return;
-          // Apps Script may place the HtmlService document behind an additional
-          // sandbox frame. In that case event.source is not necessarily the
-          // immediate iframe.contentWindow, so validate using the random
-          // requestId instead of requiring an exact source window.
-          var data = event.data || {};
-          if (data.source !== 'indie-monday-api' || data.requestId !== requestId) return;
-
-          settled = true;
-          cleanup();
-
-          try {
-            var result = JSON.parse(decodeApiBase64(data.payload || ''));
-            if (result && result.error) {
-              reject(new Error(result.error));
-              return;
-            }
-            resolve(result);
-          } catch (err) {
-            reject(new Error('Invalid response from API.'));
+        
+          if (data && data.error) {
+            reject(new Error(data.error));
+            return;
           }
-        }
+        
+          resolve(data);
+        };
 
-        window.addEventListener('message', onMessage);
+        script.onerror = function () {
+          if (settled) return;
+          settled = true;
+          cleanup();
+          reject(new Error('Network error contacting API for "' + action + '"'));
+        };
 
         timeoutId = setTimeout(function () {
-          finishError('That took too long to load');
+          if (settled) return;
+          settled = true;
+          cleanup();
+          reject(new Error('That took too long to load'));
         }, API_TIMEOUT_MS);
 
         var url = API_BASE_URL + (API_BASE_URL.indexOf('?') === -1 ? '?' : '&') +
-          'action=bridge' +
-          '&bridgeAction=' + encodeURIComponent(action) +
-          '&requestId=' + encodeURIComponent(requestId);
+          'action=' + encodeURIComponent(action) + '&callback=' + cbName;
 
         for (var k in params) {
           if (params[k] !== undefined && params[k] !== null) {
@@ -1747,8 +1717,8 @@
           }
         }
 
-        iframe.src = url;
-        document.body.appendChild(iframe);
+        script.src = url;
+        document.body.appendChild(script);
       });
     }
 
